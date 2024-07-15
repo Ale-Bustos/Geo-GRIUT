@@ -71,7 +71,7 @@ const conflictosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazo
 }), 'Conflictos Socio-Ambientales', false);
 
 // Capa de puntos históricos
-const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.comgeojson/Puntos_Historicos.geojson', new Style({
+const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Puntos_Historicos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'yellow' }),
