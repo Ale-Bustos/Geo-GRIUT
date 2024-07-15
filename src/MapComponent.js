@@ -25,10 +25,9 @@ const createStyle = (color, width) => new Style({
   })
 });
 
-// Función para crear una capa GeoJSON con un estilo específico y un título
 const createGeoJsonLayer = (url, style, title, visible = true) => {
   const vectorSource = new VectorSource({
-    url: process.env.PUBLIC_URL + url, // Usar process.env.PUBLIC_URL para la URL
+    url: url, // URL completa a S3
     format: new GeoJSON()
   });
 
