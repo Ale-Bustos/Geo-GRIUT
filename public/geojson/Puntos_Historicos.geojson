@@ -1,0 +1,16 @@
+{
+"type": "FeatureCollection",
+"name": "Puntos_Historicos",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Name": "Captura Galvarino/Batalla Lagunillas", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.155169860468533, -36.953495620744228, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Chemamules Playa Maule", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.188069137271384, -36.999623859332829, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Batalla de Andalien", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.035923120244078, -36.80891860360488, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Batalla de Marihueñu", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.16432693181315, -37.132594060584083, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Conchal 1", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.185525480904971, -37.000158197165632, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Conchal 2", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.063911074962718, -36.628003642108737, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Conchal 3", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.205603337346616, -36.77198977238033, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Fosa común de Mochanos", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -73.049909019503033, -36.851086710075023, 0.0 ] } },
+{ "type": "Feature", "properties": { "Name": "Petroglifos", "descriptio": null, "timestamp": null, "begin": null, "end": null, "altitudeMo": null, "tessellate": -1, "extrude": 0, "visibility": -1, "drawOrder": null, "icon": null }, "geometry": { "type": "Point", "coordinates": [ -72.919678643092013, -37.049833433522487, 0.0 ] } }
+]
+}

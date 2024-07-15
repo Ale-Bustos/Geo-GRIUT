@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "Nahuelbuta",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "Name": "Nawelfuta" }, "geometry": { "type": "Point", "coordinates": [ -73.066075958403488, -37.040015392293604, 0.0 ] } }
+]
+}
