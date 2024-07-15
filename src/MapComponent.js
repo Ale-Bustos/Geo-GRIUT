@@ -28,7 +28,7 @@ const createStyle = (color, width) => new Style({
 // Función para crear una capa GeoJSON con un estilo específico y un título
 const createGeoJsonLayer = (url, style, title, visible = true) => {
   const vectorSource = new VectorSource({
-    url,
+    url: process.env.PUBLIC_URL + url, // Usar process.env.PUBLIC_URL para la URL
     format: new GeoJSON()
   });
 
@@ -63,7 +63,7 @@ const createGeoJsonLayer = (url, style, title, visible = true) => {
 // Define las capas usando la función createGeoJsonLayer
 
 // Capa de conflictos
-const conflictosLayer = createGeoJsonLayer('/path/to/geojson/Conflictos.geojson', new Style({
+const conflictosLayer = createGeoJsonLayer('/geojson/Conflictos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'red' }),
@@ -72,7 +72,7 @@ const conflictosLayer = createGeoJsonLayer('/path/to/geojson/Conflictos.geojson'
 }), 'Conflictos Socio-Ambientales', false);
 
 // Capa de puntos históricos
-const puntosHistoricosLayer = createGeoJsonLayer('/path/to/geojson/Puntos_Historicos.geojson', new Style({
+const puntosHistoricosLayer = createGeoJsonLayer('/geojson/Puntos_Historicos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'yellow' }),
@@ -81,7 +81,7 @@ const puntosHistoricosLayer = createGeoJsonLayer('/path/to/geojson/Puntos_Histor
 }), 'Puntos Historicos', false);
 
 // Capa de puntos de resignificación
-const puntosResignificacionLayer = createGeoJsonLayer('/path/to/geojson/Puntos_Resignificacion.geojson', new Style({
+const puntosResignificacionLayer = createGeoJsonLayer('/geojson/Puntos_Resignificacion.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'purple' }),
@@ -123,14 +123,14 @@ const createWaterLayer = (url, color, title) => {
 };
 
 // Capas de redes hídricas
-const esterosLayer = createWaterLayer('/path/to/geojson/Esteros.geojson', '#6dceff', 'Esteros');
-const riosLayer = createWaterLayer('/path/to/geojson/Rios.geojson', '#6dceff', 'Ríos');
-const quebradasLayer = createWaterLayer('/path/to/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
+const esterosLayer = createWaterLayer('/geojson/Esteros.geojson', '#6dceff', 'Esteros');
+const riosLayer = createWaterLayer('/geojson/Rios.geojson', '#6dceff', 'Ríos');
+const quebradasLayer = createWaterLayer('/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
 
 // Capa de Nahuelbuta con un estilo de texto grande, más separado y en forma de arco, activación a zoom 12
 const nahuelbutaLayer = new VectorLayer({
   source: new VectorSource({
-    url: '/path/to/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
+    url: '/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
     format: new GeoJSON()
   }),
   style: new Style({
@@ -158,7 +158,7 @@ const nahuelbutaLayer = new VectorLayer({
 });
 
 // Capa de Provincia de Concepción con un estilo de línea punteada
-const provConceLayer = createGeoJsonLayer('/path/to/geojson/Prov_Conce.geojson', new Style({
+const provConceLayer = createGeoJsonLayer('/geojson/Prov_Conce.geojson', new Style({
   stroke: new Stroke({
     color: '#8B4513',
     width: 1,
@@ -169,7 +169,7 @@ const provConceLayer = createGeoJsonLayer('/path/to/geojson/Prov_Conce.geojson',
 // Capa de Topónimos
 const toponimosLayer = new VectorLayer({
   source: new VectorSource({
-    url: '/path/to/geojson/Toponimos.geojson', // URL del archivo GeoJSON
+    url: '/geojson/Toponimos.geojson', // URL del archivo GeoJSON
     format: new GeoJSON()
   }),
   style: (feature) => {
