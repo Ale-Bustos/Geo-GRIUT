@@ -329,19 +329,19 @@ griutLogo.style.height = 'auto'; // Mantén la proporción de la imagen
 
 const griutText = document.createElement('div');
 griutText.innerHTML = '<b>Grupo de Estudios Interculturales<br>Urbanos y Territoriales</b>'; // Añade el salto de línea usando <br> y pone el texto en negrita usando <b>
-griutText.style.fontSize = '11px'; // Tamaño por defecto para dispositivos móviles
+griutText.style.fontSize = '10px'; // Tamaño por defecto para dispositivos móviles
 griutText.style.color = 'black'; // Color del texto
-griutText.style.marginLeft = '5px'; // Añade un margen a la izquierda del texto
+griutText.style.marginLeft = '3px'; // Añade un margen a la izquierda del texto
 
 // Ajusta el tamaño para vista de escritorio
 const mediaQuery = window.matchMedia('(min-width: 768px)');
 const handleMediaQueryChange = (e) => {
   if (e.matches) {
-    griutLogo.style.width = '120px'; // Tamaño para vista de escritorio
+    griutLogo.style.width = '90px'; // Tamaño para vista de escritorio
     griutText.style.fontSize = '20px'; // Tamaño del texto para vista de escritorio
   } else {
-    griutLogo.style.width = '60px'; // Tamaño para dispositivos móviles
-    griutText.style.fontSize = '11px'; // Tamaño del texto para dispositivos móviles
+    griutLogo.style.width = '50px'; // Tamaño para dispositivos móviles
+    griutText.style.fontSize = '8px'; // Tamaño del texto para dispositivos móviles
   }
 };
 mediaQuery.addListener(handleMediaQueryChange);
