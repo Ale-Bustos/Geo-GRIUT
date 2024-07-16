@@ -14,6 +14,7 @@ import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLa
 import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
 import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
 
+
 // Función para crear un estilo
 const createStyle = (color, width) => new Style({
   stroke: new Stroke({
@@ -249,7 +250,7 @@ const MapComponent = () => {
           zoom: 10.5, // Nivel de zoom inicial
           rotation: initialRotation.current // Rotación inicial del mapa
         }),
-        controls: defaultControls().extend([
+        controls: defaultControls({ zoom: false }).extend([
           new ScaleLine({
             units: 'metric' // Añade una barra de escala métrica
           }),
@@ -282,9 +283,7 @@ const MapComponent = () => {
       layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
 
       mapRef.current.addControl(layerSwitcher); // Añade el control de capas al mapa
-      // Ajustar el estilo inline de los controles
-      document.querySelectorAll('.ol-zoom')[0].style.top = '20%';
-      document.querySelectorAll('.ol-zoom')[0].style.left = '10px';
+    
 
     // Añadir la imagen en la esquina superior izquierda
 const imgContainer = document.createElement('div');
