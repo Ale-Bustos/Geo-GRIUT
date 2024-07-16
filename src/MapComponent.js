@@ -13,8 +13,7 @@ import VectorSource from 'ol/source/Vector'; // Importa la clase VectorSource de
 import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLayers
 import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
 import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
-
-
+import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 // Función para crear un estilo
 const createStyle = (color, width) => new Style({
   stroke: new Stroke({
@@ -26,6 +25,7 @@ const createStyle = (color, width) => new Style({
   })
 });
 
+// Función para crear capas GeoJSON con estilos personalizados
 const createGeoJsonLayer = (url, style, title, visible = true) => {
   const vectorSource = new VectorSource({
     url: url, // URL completa a S3
@@ -61,8 +61,6 @@ const createGeoJsonLayer = (url, style, title, visible = true) => {
 };
 
 // Define las capas usando la función createGeoJsonLayer
-
-// Capa de conflictos
 const conflictosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Conflictos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
@@ -71,7 +69,6 @@ const conflictosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazo
   })
 }), 'Conflictos Socio-Ambientales', false);
 
-// Capa de puntos históricos
 const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Puntos_Historicos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
@@ -80,7 +77,6 @@ const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1
   })
 }), 'Puntos Historicos', false);
 
-// Capa de puntos de resignificación
 const puntosResignificacionLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Puntos_Resignificacion.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
@@ -89,7 +85,6 @@ const puntosResignificacionLayer = createGeoJsonLayer('https://geo-griut.s3.us-w
   })
 }), 'Puntos de Resignificación', false);
 
-// Función para crear capas de redes hídricas con un estilo específico
 const createWaterLayer = (url, color, title) => {
   return new VectorLayer({
     source: new VectorSource({
@@ -122,12 +117,10 @@ const createWaterLayer = (url, color, title) => {
   });
 };
 
-// Capas de redes hídricas
 const esterosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Esteros.geojson', '#6dceff', 'Esteros');
 const riosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Rios.geojson', '#6dceff', 'Ríos');
 const quebradasLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
 
-// Capa de Nahuelbuta con un estilo de texto grande, más separado y en forma de arco, activación a zoom 12
 const nahuelbutaLayer = new VectorLayer({
   source: new VectorSource({
     url: 'https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
@@ -157,7 +150,6 @@ const nahuelbutaLayer = new VectorLayer({
   visible: false // Inicialmente no visible
 });
 
-// Capa de Provincia de Concepción con un estilo de línea punteada
 const provConceLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Prov_Conce.geojson', new Style({
   stroke: new Stroke({
     color: '#8B4513',
@@ -166,7 +158,6 @@ const provConceLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazon
   })
 }), 'Límite Provincial');
 
-// Capa de Topónimos
 const toponimosLayer = new VectorLayer({
   source: new VectorSource({
     url: 'https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Toponimos.geojson', // URL del archivo GeoJSON
@@ -284,79 +275,47 @@ const MapComponent = () => {
 
       mapRef.current.addControl(layerSwitcher); // Añade el control de capas al mapa
     
+      
+      // Añadir el logo de GRIUT con texto
+      const logoContainer = document.createElement('div');
+      logoContainer.style.position = 'absolute';
+      logoContainer.style.top = '9px'; // Deja margen para los botones de zoom
+      logoContainer.style.right = '50px';
+      logoContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
+      logoContainer.style.display = 'flex';
+      logoContainer.style.alignItems = 'center';
+      logoContainer.style.padding = '5px'; // Añade un poco de padding alrededor del contenido
+      logoContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; // Fondo translúcido
+      logoContainer.style.borderRadius = '5px'; // Bordes redondeados
 
-    // Añadir la imagen en la esquina superior izquierda
-const imgContainer = document.createElement('div');
-imgContainer.style.position = 'absolute';
-imgContainer.style.top = '9px'; // Deja margen para los botones de zoom
-imgContainer.style.left = '5px';
-imgContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
-imgContainer.style.display = 'flex';
-imgContainer.style.alignItems = 'center';
+      const griutLogo = document.createElement('img');
+      griutLogo.src = 'logo01.png'; // Ruta al logo de GRIUT
+      griutLogo.style.width = '50px'; // Tamaño por defecto para dispositivos móviles
+      griutLogo.style.height = 'auto'; // Mantén la proporción de la imagen
 
-const img = document.createElement('img');
-img.src = 'rvm.png';
-img.style.width = '60px'; // Tamaño por defecto para dispositivos móviles
-img.style.height = 'auto'; // Mantén la proporción de la imagen
+      const griutText = document.createElement('div');
+      griutText.innerHTML = '<b>Grupo de Estudios Interculturales<br>Urbanos y Territoriales</b>'; // Añade el salto de línea usando <br> y pone el texto en negrita usando <b>
+      griutText.style.fontSize = '10px'; // Tamaño por defecto para dispositivos móviles
+      griutText.style.color = 'black'; // Color del texto
+      griutText.style.marginLeft = '3px'; // Añade un margen a la izquierda del texto
 
-// Ajusta el tamaño para vista de escritorio
-const mediaQueryImg = window.matchMedia('(min-width: 768px)');
-const handleMediaQueryChangeImg = (e) => {
-  if (e.matches) {
-    img.style.width = '160px'; // Tamaño para vista de escritorio
-  } else {
-    img.style.width = '90px'; // Tamaño para dispositivos móviles
-  }
-};
-mediaQueryImg.addListener(handleMediaQueryChangeImg);
-handleMediaQueryChangeImg(mediaQueryImg);
+      // Ajusta el tamaño para vista de escritorio
+      const mediaQuery = window.matchMedia('(min-width: 768px)');
+      const handleMediaQueryChange = (e) => {
+        if (e.matches) {
+          griutLogo.style.width = '90px'; // Tamaño para vista de escritorio
+          griutText.style.fontSize = '20px'; // Tamaño del texto para vista de escritorio
+        } else {
+          griutLogo.style.width = '50px'; // Tamaño para dispositivos móviles
+          griutText.style.fontSize = '10px'; // Tamaño del texto para dispositivos móviles
+        }
+      };
+      mediaQuery.addListener(handleMediaQueryChange);
+      handleMediaQueryChange(mediaQuery);
 
-imgContainer.appendChild(img);
-document.getElementById('map').appendChild(imgContainer); // Añade el contenedor de la imagen al mapa
-
-
-    // Añadir el logo de GRIUT con texto
-const logoContainer = document.createElement('div');
-logoContainer.style.position = 'absolute';
-logoContainer.style.top = '9px'; // Deja margen para los botones de zoom
-logoContainer.style.right = '50px';
-logoContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
-logoContainer.style.display = 'flex';
-logoContainer.style.alignItems = 'center';
-logoContainer.style.padding = '5px'; // Añade un poco de padding alrededor del contenido
-logoContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; // Fondo translúcido
-logoContainer.style.borderRadius = '5px'; // Bordes redondeados
-
-const griutLogo = document.createElement('img');
-griutLogo.src = 'logo01.png'; // Ruta al logo de GRIUT
-griutLogo.style.width = '50px'; // Tamaño por defecto para dispositivos móviles
-griutLogo.style.height = 'auto'; // Mantén la proporción de la imagen
-
-const griutText = document.createElement('div');
-griutText.innerHTML = '<b>Grupo de Estudios Interculturales<br>Urbanos y Territoriales</b>'; // Añade el salto de línea usando <br> y pone el texto en negrita usando <b>
-griutText.style.fontSize = '10px'; // Tamaño por defecto para dispositivos móviles
-griutText.style.color = 'black'; // Color del texto
-griutText.style.marginLeft = '3px'; // Añade un margen a la izquierda del texto
-
-// Ajusta el tamaño para vista de escritorio
-const mediaQuery = window.matchMedia('(min-width: 768px)');
-const handleMediaQueryChange = (e) => {
-  if (e.matches) {
-    griutLogo.style.width = '90px'; // Tamaño para vista de escritorio
-    griutText.style.fontSize = '20px'; // Tamaño del texto para vista de escritorio
-  } else {
-    griutLogo.style.width = '50px'; // Tamaño para dispositivos móviles
-    griutText.style.fontSize = '10px'; // Tamaño del texto para dispositivos móviles
-  }
-};
-mediaQuery.addListener(handleMediaQueryChange);
-handleMediaQueryChange(mediaQuery);
-
-logoContainer.appendChild(griutLogo);
-logoContainer.appendChild(griutText);
-document.getElementById('map').appendChild(logoContainer); // Añade el contenedor del logo al mapa
-
-
+      logoContainer.appendChild(griutLogo);
+      logoContainer.appendChild(griutText);
+      document.getElementById('map').appendChild(logoContainer); // Añade el contenedor del logo al mapa
 
       // Función para manejar cambios en el nivel de zoom
       const handleZoomChange = () => {
@@ -390,12 +349,22 @@ document.getElementById('map').appendChild(logoContainer); // Añade el contened
         }
       });
 
+      // Añadir la brújula
+      const compass = document.getElementById('compass');
+
+      // Función para actualizar la orientación de la brújula
+      mapRef.current.getView().on('change:rotation', function () {
+        const rotation = mapRef.current.getView().getRotation();
+        compass.style.transform = 'rotate(' + (rotation + Math.PI / 2) + 'rad)'; // Ajustar la brújula para que apunte al este
+      });
+
     }
   }, [layerVisibility]);
 
   return (
     <div>
       <div id="map" style={{ width: '100%', height: '100vh' }}></div>
+      <div id="compass" className="compass"></div>
     </div>
   );
 };

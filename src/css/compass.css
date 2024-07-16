@@ -1,0 +1,20 @@
+.compass {
+    position: absolute;
+    top: 10px;
+    left: 10px; /* Cambiado a 'left' para ubicarlo en la esquina superior izquierda */
+    width: 60px; /* Tamaño por defecto para dispositivos móviles */
+    height: 60px;
+    background-image: url('../img/compass.png'); /* Ruta a la imagen de la brújula */
+    background-size: contain;
+    transform-origin: center center;
+    z-index: 1000;
+  }
+  
+  /* Estilo para vistas de escritorio */
+  @media (min-width: 768px) {
+    .compass {
+      width: 150px; /* Tamaño para vista de escritorio */
+      height: 150px;
+    }
+  }
+  
