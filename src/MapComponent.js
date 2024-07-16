@@ -313,7 +313,7 @@ imgContainer.appendChild(img);
 document.getElementById('map').appendChild(imgContainer); // Añade el contenedor de la imagen al mapa
 
 
-     // Añadir el logo de GRIUT con texto
+    // Añadir el logo de GRIUT con texto
 const logoContainer = document.createElement('div');
 logoContainer.style.position = 'absolute';
 logoContainer.style.top = '9px'; // Deja margen para los botones de zoom
@@ -321,6 +321,9 @@ logoContainer.style.right = '50px';
 logoContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
 logoContainer.style.display = 'flex';
 logoContainer.style.alignItems = 'center';
+logoContainer.style.padding = '5px'; // Añade un poco de padding alrededor del contenido
+logoContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)'; // Fondo translúcido
+logoContainer.style.borderRadius = '5px'; // Bordes redondeados
 
 const griutLogo = document.createElement('img');
 griutLogo.src = 'logo01.png'; // Ruta al logo de GRIUT
@@ -341,7 +344,7 @@ const handleMediaQueryChange = (e) => {
     griutText.style.fontSize = '20px'; // Tamaño del texto para vista de escritorio
   } else {
     griutLogo.style.width = '50px'; // Tamaño para dispositivos móviles
-    griutText.style.fontSize = '8px'; // Tamaño del texto para dispositivos móviles
+    griutText.style.fontSize = '10px'; // Tamaño del texto para dispositivos móviles
   }
 };
 mediaQuery.addListener(handleMediaQueryChange);
@@ -350,6 +353,7 @@ handleMediaQueryChange(mediaQuery);
 logoContainer.appendChild(griutLogo);
 logoContainer.appendChild(griutText);
 document.getElementById('map').appendChild(logoContainer); // Añade el contenedor del logo al mapa
+
 
 
       // Función para manejar cambios en el nivel de zoom
