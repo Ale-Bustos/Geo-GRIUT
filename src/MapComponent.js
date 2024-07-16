@@ -282,19 +282,22 @@ const MapComponent = () => {
       layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
 
       mapRef.current.addControl(layerSwitcher); // Añade el control de capas al mapa
+      // Ajustar el estilo inline de los controles
+      document.querySelectorAll('.ol-zoom')[0].style.top = '20%';
+      document.querySelectorAll('.ol-zoom')[0].style.left = '10px';
 
     // Añadir la imagen en la esquina superior izquierda
 const imgContainer = document.createElement('div');
 imgContainer.style.position = 'absolute';
 imgContainer.style.top = '9px'; // Deja margen para los botones de zoom
-imgContainer.style.left = '50px';
+imgContainer.style.left = '5px';
 imgContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
 imgContainer.style.display = 'flex';
 imgContainer.style.alignItems = 'center';
 
 const img = document.createElement('img');
 img.src = 'rvm.png';
-img.style.width = '50px'; // Tamaño por defecto para dispositivos móviles
+img.style.width = '60px'; // Tamaño por defecto para dispositivos móviles
 img.style.height = 'auto'; // Mantén la proporción de la imagen
 
 // Ajusta el tamaño para vista de escritorio
@@ -303,7 +306,7 @@ const handleMediaQueryChangeImg = (e) => {
   if (e.matches) {
     img.style.width = '160px'; // Tamaño para vista de escritorio
   } else {
-    img.style.width = '60px'; // Tamaño para dispositivos móviles
+    img.style.width = '90px'; // Tamaño para dispositivos móviles
   }
 };
 mediaQueryImg.addListener(handleMediaQueryChangeImg);

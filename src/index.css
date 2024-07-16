@@ -63,7 +63,7 @@ code {
 
 /* Ajusta la posición de los botones de zoom */
 .ol-zoom {
-    top: 35%; /* Ajusta la posición vertical al 35% del contenedor del mapa */
+    top: 50%; /* Ajusta la posición vertical al 35% del contenedor del mapa */
     left: 10px; /* Asegura que esté alineado a la izquierda */
 }
 
