@@ -14,6 +14,8 @@ import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLa
 import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
 import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
+import 'intro.js/introjs.css';
+import introJs from 'intro.js'; // Importa introJs como exportación por defecto
 // Función para crear un estilo
 const createStyle = (color, width) => new Style({
   stroke: new Stroke({
@@ -355,6 +357,38 @@ const MapComponent = () => {
         }
       });
     }
+        // Configurar intro.js para el tutorial
+        const intro = introJs();
+        intro.setOptions({
+          steps: [
+            {
+              intro: "Bienvenido a nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
+            },
+            {
+              element: document.querySelector('#map'),
+              intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
+              position: 'bottom'
+            },
+            {
+              element: document.querySelector('.ol-rotate'),
+              intro: "Este es el botón de rotación. Puedes restablecer la rotación del mapa haciendo clic en él.",
+              position: 'left'
+            },
+            {
+              element: document.querySelector('.compass'),
+              intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
+              position: 'right'
+            }
+          ]
+        });
+  
+        // Mostrar el tutorial solo la primera vez
+        if (!localStorage.getItem('introShown')) {
+          intro.start();
+          localStorage.setItem('introShown', 'true');
+        }
+    
+    
   }, [layerVisibility]);
 
   return (
