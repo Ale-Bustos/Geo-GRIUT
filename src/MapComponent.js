@@ -251,18 +251,19 @@ const MapComponent = () => {
       });
 
       // Añadir el control de capas (LayerSwitcher)
-      const layerSwitcher = new LayerSwitcher({
-        activationMode: 'click', // Modo de activación por clic
-        startActive: false, // No empieza activo
-        tipLabel: 'Leyenda', // Etiqueta del botón de la leyenda
-        groupSelectStyle: 'none', // Estilo de selección de grupo sin controles de opacidad
-        collapseTipLabel: 'Ocultar leyenda' // Etiqueta del botón para ocultar la leyenda
-      });
-      layerSwitcher.element.style.right = '10px'; // Ajusta la posición del control de capas
-      layerSwitcher.element.style.top = '50%'; // Ajusta la posición del control de capas
-      layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
+    const layerSwitcher = new LayerSwitcher({
+      activationMode: 'click', // Modo de activación por clic
+      startActive: false, // No empieza activo
+      tipLabel: 'Leyenda', // Etiqueta del botón de la leyenda
+      groupSelectStyle: 'none', // Estilo de selección de grupo sin controles de opacidad
+      collapseTipLabel: 'Ocultar leyenda' // Etiqueta del botón para ocultar la leyenda
+    });
+    layerSwitcher.element.id = 'layer-switcher'; // Añade un id al control de capas
+    layerSwitcher.element.style.right = '10px'; // Ajusta la posición del control de capas
+    layerSwitcher.element.style.top = '50%'; // Ajusta la posición del control de capas
+    layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
 
-      mapRef.current.addControl(layerSwitcher); // Añade el control de capas al mapa
+    mapRef.current.addControl(layerSwitcher); // Añade el control de capas al mapa
     
       
       // Añadir el logo de GRIUT con texto
@@ -357,64 +358,63 @@ const MapComponent = () => {
         }
       });
     }
-        // Configurar intro.js para el tutorial
-      const intro = introJs();
-      intro.setOptions({
-        steps: [
-          {
-            intro: "Bienvenido a Geo GRIUT, nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
-          },
-          {
-            element: document.querySelector('#map'),
-            intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
-            position: 'bottom'
-          },
-          {
-            element: document.querySelector('.compass'),
-            intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
-            position: 'right'
-          },
-          {
-            element: document.querySelector('#layer-switcher'),
-            intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
-            position: 'left'
-          },
-          {
-            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar",
-            position: 'bottom'
-          }
-        ]
-      });
+       // Configurar intro.js para el tutorial
+    const intro = introJs();
+    intro.setOptions({
+      steps: [
+        {
+          intro: "Bienvenido a Geo GRIUT, nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
+        },
+        {
+          element: document.querySelector('#map'),
+          intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
+          position: 'bottom'
+        },
+        {
+          element: document.querySelector('.compass'),
+          intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
+          position: 'right'
+        },
+        {
+          element: document.querySelector('#layer-switcher'),
+          intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
+          position: 'left'
+        },
+        {
+          intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar",
+          position: 'bottom'
+        }
+      ]
+    });
 
-      // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
-      if (!localStorage.getItem('introShown')) {
-        intro.start();
+    // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
+    if (!localStorage.getItem('introShown')) {
+      intro.start();
+    }
+
+    // Agregar event listener para el checkbox "No volver a mostrar"
+    intro.oncomplete(() => {
+      const dontShowAgain = document.getElementById('dont-show-again');
+      if (dontShowAgain && dontShowAgain.checked) {
+        localStorage.setItem('introShown', 'true');
       }
+    });
 
-      // Agregar event listener para el checkbox "No volver a mostrar"
-      intro.oncomplete(() => {
-        const dontShowAgain = document.getElementById('dont-show-again');
-        if (dontShowAgain && dontShowAgain.checked) {
-          localStorage.setItem('introShown', 'true');
-        }
-      });
+    intro.onexit(() => {
+      const dontShowAgain = document.getElementById('dont-show-again');
+      if (dontShowAgain && dontShowAgain.checked) {
+        localStorage.setItem('introShown', 'true');
+      }
+    });
 
-      intro.onexit(() => {
-        const dontShowAgain = document.getElementById('dont-show-again');
-        if (dontShowAgain && dontShowAgain.checked) {
-          localStorage.setItem('introShown', 'true');
-        }
-      });
-  
-    
-  }, [layerVisibility]);
+}, [layerVisibility]);
 
-  return (
-    <div>
-      <div id="map" style={{ width: '100%', height: '100vh' }}></div>
-      <div id="compass" className="compass"></div>
-    </div>
-  );
+return (
+  <div>
+    <div id="map" style={{ width: '100%', height: '100vh' }}></div>
+    <div id="compass" className="compass"></div>
+  </div>
+);
 };
 
 export default MapComponent;
