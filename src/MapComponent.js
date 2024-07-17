@@ -358,36 +358,54 @@ const MapComponent = () => {
       });
     }
         // Configurar intro.js para el tutorial
-        const intro = introJs();
-        intro.setOptions({
-          steps: [
-            {
-              intro: "Bienvenido a nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
-            },
-            {
-              element: document.querySelector('#map'),
-              intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
-              position: 'bottom'
-            },
-            {
-              element: document.querySelector('.ol-rotate'),
-              intro: "Este es el botón de rotación. Puedes restablecer la rotación del mapa haciendo clic en él.",
-              position: 'left'
-            },
-            {
-              element: document.querySelector('.compass'),
-              intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
-              position: 'right'
-            }
-          ]
-        });
-  
-        // Mostrar el tutorial solo la primera vez
-        if (!localStorage.getItem('introShown')) {
-          intro.start();
+      const intro = introJs();
+      intro.setOptions({
+        steps: [
+          {
+            intro: "Bienvenido a Geo GRIUT, nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
+          },
+          {
+            element: document.querySelector('#map'),
+            intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
+            position: 'bottom'
+          },
+          {
+            element: document.querySelector('.compass'),
+            intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
+            position: 'right'
+          },
+          {
+            element: document.querySelector('#layer-switcher'),
+            intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
+            position: 'left'
+          },
+          {
+            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar",
+            position: 'bottom'
+          }
+        ]
+      });
+
+      // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
+      if (!localStorage.getItem('introShown')) {
+        intro.start();
+      }
+
+      // Agregar event listener para el checkbox "No volver a mostrar"
+      intro.oncomplete(() => {
+        const dontShowAgain = document.getElementById('dont-show-again');
+        if (dontShowAgain && dontShowAgain.checked) {
           localStorage.setItem('introShown', 'true');
         }
-    
+      });
+
+      intro.onexit(() => {
+        const dontShowAgain = document.getElementById('dont-show-again');
+        if (dontShowAgain && dontShowAgain.checked) {
+          localStorage.setItem('introShown', 'true');
+        }
+      });
+  
     
   }, [layerVisibility]);
 
