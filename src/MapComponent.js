@@ -358,54 +358,71 @@ const MapComponent = () => {
         }
       });
     }
-       // Configurar intro.js para el tutorial
-    const intro = introJs();
-    intro.setOptions({
-      steps: [
-        {
-          intro: "Bienvenido a Geo GRIUT, nuestro mapa interactivo. Vamos a guiarte a través de las funcionalidades básicas."
-        },
-        {
-          element: document.querySelector('#map'),
-          intro: "Este es el mapa donde puedes interactuar con diferentes capas y ver información geográfica.",
-          position: 'bottom'
-        },
-        {
-          element: document.querySelector('.compass'),
-          intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
-          position: 'right'
-        },
-        {
-          element: document.querySelector('#layer-switcher'),
-          intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
-          position: 'left'
-        },
-        {
-          intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar",
-          position: 'bottom'
+        // Configurar intro.js para el tutorial
+      const intro = introJs();
+      intro.setOptions({
+        steps: [
+          {
+            intro: "Bienvenido a Geo-GRIUT, nuestro visualizador de mapas interactivo. Vamos a guiarte a través de las funcionalidades básicas."
+          },
+          {
+            element: document.querySelector('#map'),
+            intro: "Este  mapa  puedes interactuar con diferentes capas y ver información geográfica...",
+            position: 'bottom'
+          },
+          {
+            element: document.querySelector('.compass'),
+            intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
+            position: 'right'
+          },
+          {
+            element: document.querySelector('#layer-switcher'),
+            intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
+            position: 'left'
+          },
+          {
+            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar tutorial",
+            position: 'bottom'
+          }
+        ],
+        showStepNumbers: false,
+        showProgress: true,
+        scrollToElement: true,
+        disableInteraction: true,
+        hideNext: false,
+        hidePrev: false,
+        exitOnOverlayClick: false,
+        exitOnEsc: true,
+        overlayOpacity: 0.8,
+        keyboardNavigation: true,
+        doneLabel: 'Listo',
+        nextLabel: 'Siguiente',
+        prevLabel: 'Anterior',
+        skipLabel: 'Saltar',
+        scrollTo: 'tooltip'
+      });
+
+      // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
+      if (!localStorage.getItem('introShown')) {
+        setTimeout(() => {
+          intro.start();
+        }, 1000); // Ajusta el tiempo según sea necesario
+      }
+
+      // Agregar event listener para el checkbox "No volver a mostrar"
+      intro.oncomplete(() => {
+        const dontShowAgain = document.getElementById('dont-show-again');
+        if (dontShowAgain && dontShowAgain.checked) {
+          localStorage.setItem('introShown', 'true');
         }
-      ]
-    });
+      });
 
-    // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
-    if (!localStorage.getItem('introShown')) {
-      intro.start();
-    }
-
-    // Agregar event listener para el checkbox "No volver a mostrar"
-    intro.oncomplete(() => {
-      const dontShowAgain = document.getElementById('dont-show-again');
-      if (dontShowAgain && dontShowAgain.checked) {
-        localStorage.setItem('introShown', 'true');
-      }
-    });
-
-    intro.onexit(() => {
-      const dontShowAgain = document.getElementById('dont-show-again');
-      if (dontShowAgain && dontShowAgain.checked) {
-        localStorage.setItem('introShown', 'true');
-      }
-    });
+      intro.onexit(() => {
+        const dontShowAgain = document.getElementById('dont-show-again');
+        if (dontShowAgain && dontShowAgain.checked) {
+          localStorage.setItem('introShown', 'true');
+        }
+      });
 
 }, [layerVisibility]);
 
