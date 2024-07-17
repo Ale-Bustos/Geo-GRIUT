@@ -381,7 +381,7 @@ const MapComponent = () => {
             position: 'left'
           },
           {
-            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar.  'Página en Desarrollo'",
+            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar.             Página en Desarrollo",
             position: 'bottom'
           }
         ],
@@ -393,7 +393,7 @@ const MapComponent = () => {
         hidePrev: false,
         exitOnOverlayClick: false,
         exitOnEsc: true,
-        overlayOpacity: 0.8,
+        overlayOpacity: 0.6,
         keyboardNavigation: true,
         doneLabel: 'Listo',
         nextLabel: 'Siguiente',
