@@ -381,7 +381,7 @@ const MapComponent = () => {
             position: 'left'
           },
           {
-            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar.             Página en Desarrollo",
+            intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar.             Página en Desarrollo 🦖",
             position: 'bottom'
           }
         ],
