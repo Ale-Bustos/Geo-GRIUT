@@ -241,23 +241,10 @@ const MapComponent = () => {
           zoom: 10.5, // Nivel de zoom inicial
           rotation: initialRotation.current // Rotación inicial del mapa
         }),
-        controls: defaultControls({ zoom: false }).extend([
+        controls: defaultControls({ zoom: false, rotate: false }).extend([
           new ScaleLine({
             units: 'metric' // Añade una barra de escala métrica
           }),
-          new Rotate({
-            autoHide: false, // Muestra siempre el botón de rotación
-            label: 'R', // Etiqueta del botón de rotación
-            tipLabel: 'Reset rotation', // Etiqueta del tooltip del botón de rotación
-            resetNorth: () => {
-              const currentRotation = mapRef.current.getView().getRotation();
-              if (currentRotation !== initialRotation.current) {
-                mapRef.current.getView().setRotation(initialRotation.current);
-              } else {
-                mapRef.current.getView().setRotation(0);
-              }
-            }
-          })
         ])
       });
 
@@ -280,7 +267,7 @@ const MapComponent = () => {
       const logoContainer = document.createElement('div');
       logoContainer.style.position = 'absolute';
       logoContainer.style.top = '9px'; // Deja margen para los botones de zoom
-      logoContainer.style.right = '50px';
+      logoContainer.style.right = '10px';
       logoContainer.style.zIndex = '1000'; // Asegúrate de que esté por encima del mapa
       logoContainer.style.display = 'flex';
       logoContainer.style.alignItems = 'center';
@@ -349,7 +336,7 @@ const MapComponent = () => {
         }
       });
 
-      // Añadir la brújula
+             // Añadir la brújula
       const compass = document.getElementById('compass');
 
       // Función para actualizar la orientación de la brújula
@@ -358,6 +345,15 @@ const MapComponent = () => {
         compass.style.transform = 'rotate(' + (rotation + Math.PI / 2) + 'rad)'; // Ajustar la brújula para que apunte al este
       });
 
+      // Añadir evento click a la brújula para reiniciar la rotación
+      compass.addEventListener('click', () => {
+        const currentRotation = mapRef.current.getView().getRotation();
+        if (currentRotation !== initialRotation.current) {
+          mapRef.current.getView().setRotation(initialRotation.current);
+        } else {
+          mapRef.current.getView().setRotation(0);
+        }
+      });
     }
   }, [layerVisibility]);
 

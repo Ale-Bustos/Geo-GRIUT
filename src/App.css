@@ -85,15 +85,9 @@
   border-radius: 5px;
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
 }
-
-/* Ajusta la posición de los botones de zoom */
-.ol-zoom {
-    top: 50%; /* Ajusta la posición vertical al 35% del contenedor del mapa */
-    left: 10px; /* Asegura que esté alineado a la izquierda */
-}
-
 /* Ajusta la posición del botón de rotación */
 .ol-rotate {
-    top: 35%; /* Ajusta la posición vertical al 35% del contenedor del mapa */
-    right: 10px; /* Asegura que esté alineado a la derecha */
+  top: 50%; /* Ajusta la posición vertical al 50% del contenedor del mapa */
+  right: 10px; /* Asegura que esté alineado a la derecha */
+  transform: translateY(1000%); /* Centra verticalmente */
 }
