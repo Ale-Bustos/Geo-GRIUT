@@ -1,3 +1,4 @@
+import gsap from 'gsap';
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
 import 'ol-ext/dist/ol-ext.css'; // Importa los estilos adicionales de ol-ext
 import React, { useState, useEffect, useRef } from 'react'; // Importa React y algunos hooks necesarios
@@ -16,6 +17,7 @@ import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control 
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import 'intro.js/introjs.css';
 import introJs from 'intro.js'; // Importa introJs como exportación por defecto
+
 // Función para crear un estilo
 const createStyle = (color, width) => new Style({
   stroke: new Stroke({
@@ -95,22 +97,27 @@ const createWaterLayer = (url, color, title) => {
     }),
     style: (feature) => {
       const text = feature.get('Nombre');
+      const textStyle = new Text({
+        font: 'italic 14px Calibri,sans-serif',
+        fill: new Fill({ color: color }),
+        stroke: new Stroke({
+          color: '#ffffff',
+          width: 2
+        }),
+        text: text,
+        overflow: true,
+        placement: 'line'
+      });
+
+      // Aplicar animación con GSAP al texto
+      gsap.fromTo(textStyle, { opacity: 0 }, { opacity: 1, duration: 1 });
+
       return new Style({
         stroke: new Stroke({
           color: color,
           width: 2
         }),
-        text: new Text({
-          font: 'italic 14px Calibri,sans-serif',
-          fill: new Fill({ color: color }),
-          stroke: new Stroke({
-            color: '#ffffff',
-            width: 2
-          }),
-          text: text,
-          overflow: true,
-          placement: 'line'
-        })
+        text: textStyle
       });
     },
     properties: {
@@ -119,24 +126,27 @@ const createWaterLayer = (url, color, title) => {
   });
 };
 
+
 const esterosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Esteros.geojson', '#6dceff', 'Esteros');
 const riosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Rios.geojson', '#6dceff', 'Ríos');
 const quebradasLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
+
 
 const nahuelbutaLayer = new VectorLayer({
   source: new VectorSource({
     url: 'https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
     format: new GeoJSON()
   }),
-  style: new Style({
-    text: new Text({
+  style: (feature) => {
+    const text = feature.get('Nombre') || 'Nawelfuta'; // Obtener el texto de la característica o usar un valor predeterminado
+    const textStyle = new Text({
       font: '90px Calibri,sans-serif', // Aumenta el tamaño de la fuente a 60px
       fill: new Fill({ color: 'green' }), // Color de relleno del texto
       stroke: new Stroke({
         color: 'white', // Color del borde del texto
         width: 3 // Grosor del borde del texto
       }),
-      text: 'Nawelfuta', // Texto que se mostrará en el mapa
+      text: text, // Texto que se mostrará en el mapa
       overflow: true, // Permitir que el texto se desborde si es necesario
       placement: 'point', // Colocación del texto: en el punto del feature
       textAlign: 'center', // Alineación del texto: centrado
@@ -144,8 +154,15 @@ const nahuelbutaLayer = new VectorLayer({
       rotation: -0.5, // Rotación del texto para crear efecto de arco
       offsetY: 0, // Desplazamiento vertical del texto
       letterSpacing: 100 // Espaciado entre letras
-    })
-  }),
+    });
+
+    // Aplicar animación con GSAP al texto
+    gsap.fromTo(textStyle, { opacity: 0 }, { opacity: 1, duration: 2 });
+
+    return new Style({
+      text: textStyle
+    });
+  },
   properties: {
     title: 'Nahuelbuta'
   },
