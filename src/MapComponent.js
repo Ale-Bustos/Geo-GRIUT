@@ -65,7 +65,7 @@ const createGeoJsonLayer = (url, style, title, visible = true) => {
 };
 
 // Define las capas usando la función createGeoJsonLayer
-const conflictosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Conflictos.geojson', new Style({
+const conflictosLayer = createGeoJsonLayer('/geojson/Conflictos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'red' }),
@@ -73,7 +73,7 @@ const conflictosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazo
   })
 }), 'Conflictos Socio-Ambientales', false);
 
-const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Puntos_Historicos.geojson', new Style({
+const puntosHistoricosLayer = createGeoJsonLayer('/geojson/Puntos_Historicos.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'yellow' }),
@@ -81,7 +81,7 @@ const puntosHistoricosLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1
   })
 }), 'Puntos Historicos', false);
 
-const puntosResignificacionLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Puntos_Resignificacion.geojson', new Style({
+const puntosResignificacionLayer = createGeoJsonLayer('Puntos_Resignificacion.geojson', new Style({
   image: new CircleStyle({
     radius: 5,
     fill: new Fill({ color: 'purple' }),
@@ -127,14 +127,14 @@ const createWaterLayer = (url, color, title) => {
 };
 
 
-const esterosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Esteros.geojson', '#6dceff', 'Esteros');
-const riosLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Rios.geojson', '#6dceff', 'Ríos');
-const quebradasLayer = createWaterLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
+const esterosLayer = createWaterLayer('/geojson/Esteros.geojson', '#6dceff', 'Esteros');
+const riosLayer = createWaterLayer('/geojson/Rios.geojson', '#6dceff', 'Ríos');
+const quebradasLayer = createWaterLayer('/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
 
 
 const nahuelbutaLayer = new VectorLayer({
   source: new VectorSource({
-    url: 'https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
+    url: '/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
     format: new GeoJSON()
   }),
   style: (feature) => {
@@ -169,7 +169,7 @@ const nahuelbutaLayer = new VectorLayer({
   visible: false // Inicialmente no visible
 });
 
-const provConceLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Prov_Conce.geojson', new Style({
+const provConceLayer = createGeoJsonLayer('/geojson/Prov_Conce.geojson', new Style({
   stroke: new Stroke({
     color: '#8B4513',
     width: 1,
@@ -179,7 +179,7 @@ const provConceLayer = createGeoJsonLayer('https://geo-griut.s3.us-west-1.amazon
 
 const toponimosLayer = new VectorLayer({
   source: new VectorSource({
-    url: 'https://geo-griut.s3.us-west-1.amazonaws.com/geojson/Toponimos.geojson', // URL del archivo GeoJSON
+    url: '/geojson/Toponimos.geojson', // URL del archivo GeoJSON
     format: new GeoJSON()
   }),
   style: (feature) => {
