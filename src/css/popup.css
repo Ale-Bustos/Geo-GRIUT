@@ -1,0 +1,116 @@
+/* Popup de los puntos del mapa (basado en el ejemplo de popup de OpenLayers) */
+
+.ol-popup {
+  position: absolute;
+  background-color: white;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  bottom: 12px;
+  left: -50px;
+  width: max-content;
+  min-width: 220px;
+  max-width: min(320px, 80vw);
+  max-height: 50vh;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.35;
+  color: #222;
+}
+
+.ol-popup:after, .ol-popup:before {
+  top: 100%;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+
+.ol-popup:after {
+  border-color: rgba(255, 255, 255, 0);
+  border-top-color: white;
+  border-width: 10px;
+  left: 48px;
+  margin-left: -10px;
+}
+
+.ol-popup-closer {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #555;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ol-popup-closer:hover,
+.ol-popup-closer:focus-visible {
+  background-color: #eee;
+  color: #000;
+}
+
+.ol-popup-closer:after {
+  content: "✖";
+}
+
+.feature-popup-category {
+  margin: 0 28px 2px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #8b4513;
+}
+
+.feature-popup-title {
+  margin: 0 28px 8px 0;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.feature-popup dl {
+  margin: 0;
+}
+
+.feature-popup dl > div {
+  margin-top: 6px;
+}
+
+.feature-popup dt {
+  font-size: 12px;
+  color: #666;
+}
+
+.feature-popup dd {
+  margin: 0;
+}
+
+.feature-popup-sources {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e5e5;
+  font-size: 13px;
+}
+
+.feature-popup-sources span {
+  color: #666;
+}
+
+.feature-popup-sources ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.feature-popup-sources a {
+  color: #0b62c4;
+  word-break: break-all;
+}

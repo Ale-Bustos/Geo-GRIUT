@@ -1,8 +1,10 @@
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
 import 'ol-ext/dist/ol-ext.css'; // Importa los estilos adicionales de ol-ext
-import { useEffect, useRef } from 'react'; // Importa los hooks de React necesarios
+import { useEffect, useRef, useState } from 'react'; // Importa los hooks de React necesarios
+import { createPortal } from 'react-dom';
 import Map from 'ol/Map'; // Importa la clase Map de OpenLayers
 import View from 'ol/View'; // Importa la clase View de OpenLayers
+import Overlay from 'ol/Overlay'; // Importa la clase Overlay para el popup
 import LayerGroup from 'ol/layer/Group'; // Importa la clase LayerGroup de OpenLayers
 import TileLayer from 'ol/layer/Tile'; // Importa la clase TileLayer de OpenLayers
 import TileImage from 'ol/source/TileImage'; // Importa la clase TileImage de OpenLayers
@@ -15,9 +17,11 @@ import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // 
 import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import './css/logo.css'; // Importa los estilos del logo de GRIUT
+import './css/popup.css'; // Importa los estilos del popup de los puntos
 import 'intro.js/introjs.css';
 import './css/tutorial.css'; // Ajustes de estilo del tutorial
 import introJs from 'intro.js'; // Importa introJs como exportación por defecto
+import FeaturePopup from './FeaturePopup';
 
 // minZoom de OpenLayers es exclusivo (zoom > minZoom); se resta un margen mínimo
 // para que cada capa siga apareciendo desde el mismo nivel de zoom que antes (zoom >= umbral)
@@ -28,6 +32,12 @@ const INITIAL_ROTATION = -2; // Rotación inicial del mapa
 // Las capas con etiquetas se depuran juntas: si dos etiquetas chocan, solo se dibuja la de la capa
 // más arriba en la leyenda (o la primera dentro de la misma capa)
 const LABEL_DECLUTTER_GROUP = 'etiquetas';
+
+// Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
+const POPUP_HIT_TOLERANCE = 6;
+
+// Solo las capas con categoría de popup responden a los clics
+const isPopupLayer = (layer) => Boolean(layer.get('popupCategory'));
 
 // Guarda en caché los estilos por texto: OpenLayers llama a la función de estilo
 // en cada renderizado, así que crear estilos nuevos cada vez es costoso
@@ -136,6 +146,11 @@ const createLayers = () => {
       declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
     })
   }), 'Puntos de Resignificación', false);
+
+  // Categoría que se muestra en el popup de cada capa de puntos
+  conflictosLayer.set('popupCategory', 'Conflicto socioambiental');
+  puntosHistoricosLayer.set('popupCategory', 'Punto histórico');
+  puntosResignificacionLayer.set('popupCategory', 'Resignificación cultural');
 
   const esterosLayer = createWaterLayer('/geojson/Esteros.geojson', '#6dceff', 'Esteros');
   const riosLayer = createWaterLayer('/geojson/Rios.geojson', '#6dceff', 'Ríos');
@@ -246,6 +261,13 @@ const createLayers = () => {
 const MapComponent = () => {
   const mapRef = useRef(null); // Referencia al mapa
   const compassRef = useRef(null); // Referencia a la brújula
+  const popupOverlayRef = useRef(null); // Referencia al overlay del popup
+  const [popupElement] = useState(() => {
+    const element = document.createElement('div'); // Contenedor que OpenLayers posiciona sobre el mapa
+    element.className = 'ol-popup';
+    return element;
+  });
+  const [selectedFeature, setSelectedFeature] = useState(null); // Punto cuyo popup está abierto
 
   useEffect(() => {
     const map = new Map({
@@ -278,6 +300,55 @@ const MapComponent = () => {
     layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
     map.addControl(layerSwitcher); // Añade el control de capas al mapa
 
+    // Popup con la información de los puntos
+    const popupOverlay = new Overlay({
+      element: popupElement,
+      autoPan: { animation: { duration: 250 } } // Desplaza el mapa si el popup queda fuera de la vista
+    });
+    map.addOverlay(popupOverlay);
+    // OpenLayers fija z-index 0 en el contenedor de overlays y controles; se sube por encima
+    // del logo y la brújula (z-index 1000) para que no tapen el popup
+    map.getOverlayContainerStopEvent().style.zIndex = '1100';
+    popupOverlayRef.current = popupOverlay;
+
+    const closePopup = () => setSelectedFeature(null);
+
+    // Al hacer clic en un punto se abre su popup; al hacer clic fuera, se cierra
+    map.on('singleclick', (event) => {
+      let hit = null;
+      map.forEachFeatureAtPixel(event.pixel, (feature, layer) => {
+        hit = { feature, layer };
+        return true; // Se queda con el primer punto encontrado
+      }, { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
+
+      if (hit) {
+        setSelectedFeature({
+          properties: hit.feature.getProperties(),
+          category: hit.layer.get('popupCategory'),
+          coordinate: hit.feature.getGeometry().getCoordinates()
+        });
+      } else {
+        closePopup();
+      }
+    });
+
+    // Cambia el cursor al pasar sobre un punto con popup
+    map.on('pointermove', (event) => {
+      if (event.dragging) {
+        return;
+      }
+      const overPoint = map.hasFeatureAtPixel(event.pixel, { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
+      map.getTargetElement().style.cursor = overPoint ? 'pointer' : '';
+    });
+
+    // La tecla Escape cierra el popup
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        closePopup();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
     // Actualizar la orientación de la brújula
     const updateCompass = () => {
       const rotation = map.getView().getRotation();
@@ -305,7 +376,7 @@ const MapComponent = () => {
         },
         {
           element: document.querySelector('#layer-switcher'),
-          intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa.",
+          intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa. Haz clic en un punto de conflicto, histórico o de resignificación para ver su información.",
           position: 'left'
         },
         {
@@ -351,10 +422,19 @@ const MapComponent = () => {
     // Limpieza al desmontar el componente
     return () => {
       clearTimeout(introTimeout);
+      document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
       mapRef.current = null;
     };
-  }, []);
+  }, [popupElement]);
+
+  // Posiciona el popup después de que React dibuje su contenido, para que el desplazamiento
+  // automático del mapa (autoPan) use el tamaño real del popup
+  useEffect(() => {
+    popupOverlayRef.current.setPosition(selectedFeature ? selectedFeature.coordinate : undefined);
+  }, [selectedFeature]);
+
+  const handleClosePopup = () => setSelectedFeature(null);
 
   // Al hacer clic en la brújula, alterna entre la rotación inicial y el norte arriba
   const handleCompassClick = () => {
@@ -378,6 +458,14 @@ const MapComponent = () => {
         <img src="logo01.png" alt="Logo GRIUT" />
         <div><b>Grupo de Estudios Interculturales<br />Urbanos y Territoriales</b></div>
       </div>
+      {selectedFeature && createPortal(
+        <FeaturePopup
+          properties={selectedFeature.properties}
+          category={selectedFeature.category}
+          onClose={handleClosePopup}
+        />,
+        popupElement
+      )}
     </div>
   );
 };
