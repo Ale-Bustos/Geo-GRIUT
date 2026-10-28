@@ -270,6 +270,7 @@ const MapComponent = () => {
       compassRef.current.style.transform = 'rotate(' + (rotation + Math.PI / 2) + 'rad)'; // Ajustar la brújula para que apunte al este
     };
     map.getView().on('change:rotation', updateCompass);
+    updateCompass(); // Orienta la brújula según la rotación inicial del mapa
 
     // Configurar intro.js para el tutorial
     const intro = introJs();
