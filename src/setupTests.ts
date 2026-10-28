@@ -7,4 +7,4 @@ class ResizeObserverStub {
   unobserve() {}
   disconnect() {}
 }
-globalThis.ResizeObserver = globalThis.ResizeObserver || ResizeObserverStub;
+globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;

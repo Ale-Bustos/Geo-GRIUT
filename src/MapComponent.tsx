@@ -14,6 +14,10 @@ import VectorLayer from 'ol/layer/Vector'; // Importa la clase VectorLayer de Op
 import VectorSource from 'ol/source/Vector'; // Importa la clase VectorSource de OpenLayers
 import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLayers
 import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
+import Point from 'ol/geom/Point';
+import type BaseLayer from 'ol/layer/Base';
+import type { FeatureLike } from 'ol/Feature';
+import type { Coordinate } from 'ol/coordinate';
 import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import './css/logo.css'; // Importa los estilos del logo de GRIUT
@@ -22,6 +26,19 @@ import 'intro.js/introjs.css';
 import './css/tutorial.css'; // Ajustes de estilo del tutorial
 import introJs from 'intro.js'; // Importa introJs como exportación por defecto
 import FeaturePopup from './FeaturePopup';
+
+// Punto del mapa cuyo popup está abierto
+interface SelectedFeature {
+  properties: Record<string, unknown>;
+  category: string;
+  coordinate: Coordinate;
+}
+
+// Token público de Mapbox para el mapa base (ver .env.example)
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+if (!MAPBOX_TOKEN && import.meta.env.MODE !== 'test') {
+  console.error('Falta VITE_MAPBOX_TOKEN: el mapa base de Mapbox no se cargará');
+}
 
 // minZoom de OpenLayers es exclusivo (zoom > minZoom); se resta un margen mínimo
 // para que cada capa siga apareciendo desde el mismo nivel de zoom que antes (zoom >= umbral)
@@ -37,13 +54,16 @@ const LABEL_DECLUTTER_GROUP = 'etiquetas';
 const POPUP_HIT_TOLERANCE = 6;
 
 // Solo las capas con categoría de popup responden a los clics
-const isPopupLayer = (layer) => Boolean(layer.get('popupCategory'));
+const isPopupLayer = (layer: BaseLayer) => Boolean(layer.get('popupCategory'));
 
 // Guarda en caché los estilos por texto: OpenLayers llama a la función de estilo
 // en cada renderizado, así que crear estilos nuevos cada vez es costoso
-const createCachedStyleFunction = (getText, buildStyle) => {
-  const cache = {};
-  return (feature) => {
+const createCachedStyleFunction = (
+  getText: (feature: FeatureLike) => string | undefined,
+  buildStyle: (text: string) => Style
+) => {
+  const cache: Record<string, Style> = {};
+  return (feature: FeatureLike) => {
     const text = getText(feature) || '';
     if (!cache[text]) {
       cache[text] = buildStyle(text);
@@ -53,7 +73,7 @@ const createCachedStyleFunction = (getText, buildStyle) => {
 };
 
 // Función para crear capas GeoJSON con estilos personalizados
-const createGeoJsonLayer = (url, style, title, visible = true) => new VectorLayer({
+const createGeoJsonLayer = (url: string, style: Style, title: string, visible = true) => new VectorLayer({
   source: new VectorSource({
     url: url,
     format: new GeoJSON()
@@ -61,9 +81,9 @@ const createGeoJsonLayer = (url, style, title, visible = true) => new VectorLaye
   style: createCachedStyleFunction(
     (feature) => feature.get('Nombre') || feature.get('PopupInfo') || feature.get('Name'),
     (text) => new Style({
-      stroke: style.getStroke(),
-      fill: style.getFill(),
-      image: style.getImage(),
+      stroke: style.getStroke() ?? undefined,
+      fill: style.getFill() ?? undefined,
+      image: style.getImage() ?? undefined,
       text: new Text({
         font: '16px Calibri,sans-serif',
         fill: new Fill({ color: '#000' }),
@@ -86,7 +106,7 @@ const createGeoJsonLayer = (url, style, title, visible = true) => new VectorLaye
   declutter: LABEL_DECLUTTER_GROUP
 });
 
-const createWaterLayer = (url, color, title) => new VectorLayer({
+const createWaterLayer = (url: string, color: string, title: string) => new VectorLayer({
   source: new VectorSource({
     url,
     format: new GeoJSON()
@@ -175,10 +195,9 @@ const createLayers = () => {
           overflow: true, // Permitir que el texto se desborde si es necesario
           placement: 'point', // Colocación del texto: en el punto del feature
           textAlign: 'center', // Alineación del texto: centrado
-          baseline: 'middle', // Baseline del texto: medio
+          textBaseline: 'middle', // Baseline del texto: medio
           rotation: -0.5, // Rotación del texto para crear efecto de arco
-          offsetY: 0, // Desplazamiento vertical del texto
-          letterSpacing: 100 // Espaciado entre letras
+          offsetY: 0 // Desplazamiento vertical del texto
         })
       })
     ),
@@ -228,20 +247,20 @@ const createLayers = () => {
 
   return [
     new LayerGroup({
-      title: 'Mapa Base',
+      properties: { title: 'Mapa Base' },
       layers: [
         new TileLayer({
           source: new TileImage({
             // @2x devuelve teselas de 512px, que es lo que espera tilePixelRatio: 2
-            url: 'https://api.mapbox.com/styles/v1/alejandro00bustos/clv9300mb03go01nugjw2heg1/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoiYWxlamFuZHJvMDBidXN0b3MiLCJhIjoiY2xmeXE0MW14MGJqNDNmczE2MHhkeGU1cSJ9.atA_HPcGYF4yYvxU-BwVjw',
+            url: `https://api.mapbox.com/styles/v1/alejandro00bustos/clv9300mb03go01nugjw2heg1/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`,
             tilePixelRatio: 2
           }),
-          title: 'Mapbox'
+          properties: { title: 'Mapbox' }
         })
       ]
     }),
     new LayerGroup({
-      title: 'Capas',
+      properties: { title: 'Capas' },
       layers: [
         conflictosLayer,
         puntosHistoricosLayer,
@@ -259,15 +278,15 @@ const createLayers = () => {
 
 // Componente del mapa
 const MapComponent = () => {
-  const mapRef = useRef(null); // Referencia al mapa
-  const compassRef = useRef(null); // Referencia a la brújula
-  const popupOverlayRef = useRef(null); // Referencia al overlay del popup
+  const mapRef = useRef<Map | null>(null); // Referencia al mapa
+  const compassRef = useRef<HTMLButtonElement>(null); // Referencia a la brújula
+  const popupOverlayRef = useRef<Overlay | null>(null); // Referencia al overlay del popup
   const [popupElement] = useState(() => {
     const element = document.createElement('div'); // Contenedor que OpenLayers posiciona sobre el mapa
     element.className = 'ol-popup';
     return element;
   });
-  const [selectedFeature, setSelectedFeature] = useState(null); // Punto cuyo popup está abierto
+  const [selectedFeature, setSelectedFeature] = useState<SelectedFeature | null>(null); // Punto cuyo popup está abierto
 
   useEffect(() => {
     const map = new Map({
@@ -308,24 +327,26 @@ const MapComponent = () => {
     map.addOverlay(popupOverlay);
     // OpenLayers fija z-index 0 en el contenedor de overlays y controles; se sube por encima
     // del logo y la brújula (z-index 1000) para que no tapen el popup
-    map.getOverlayContainerStopEvent().style.zIndex = '1100';
+    const overlayContainer = map.getOverlayContainerStopEvent();
+    if (overlayContainer) {
+      overlayContainer.style.zIndex = '1100';
+    }
     popupOverlayRef.current = popupOverlay;
 
     const closePopup = () => setSelectedFeature(null);
 
     // Al hacer clic en un punto se abre su popup; al hacer clic fuera, se cierra
     map.on('singleclick', (event) => {
-      let hit = null;
-      map.forEachFeatureAtPixel(event.pixel, (feature, layer) => {
-        hit = { feature, layer };
-        return true; // Se queda con el primer punto encontrado
-      }, { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
+      // Se queda con el primer punto encontrado
+      const hit = map.forEachFeatureAtPixel(event.pixel, (feature, layer) => ({ feature, layer }),
+        { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
 
       if (hit) {
+        const geometry = hit.feature.getGeometry();
         setSelectedFeature({
           properties: hit.feature.getProperties(),
           category: hit.layer.get('popupCategory'),
-          coordinate: hit.feature.getGeometry().getCoordinates()
+          coordinate: geometry instanceof Point ? geometry.getCoordinates() : event.coordinate
         });
       } else {
         closePopup();
@@ -338,11 +359,14 @@ const MapComponent = () => {
         return;
       }
       const overPoint = map.hasFeatureAtPixel(event.pixel, { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
-      map.getTargetElement().style.cursor = overPoint ? 'pointer' : '';
+      const target = map.getTargetElement();
+      if (target) {
+        target.style.cursor = overPoint ? 'pointer' : '';
+      }
     });
 
     // La tecla Escape cierra el popup
-    const handleKeyDown = (event) => {
+    const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         closePopup();
       }
@@ -352,6 +376,9 @@ const MapComponent = () => {
     // Actualizar la orientación de la brújula
     const updateCompass = () => {
       const rotation = map.getView().getRotation();
+      if (!compassRef.current) {
+        return;
+      }
       compassRef.current.style.transform = 'rotate(' + (rotation + Math.PI / 2) + 'rad)'; // Ajustar la brújula para que apunte al este
     };
     map.getView().on('change:rotation', updateCompass);
@@ -403,8 +430,8 @@ const MapComponent = () => {
 
     // Guardar la preferencia si el usuario marcó "No volver a mostrar"
     const saveIntroPreference = () => {
-      const dontShowAgain = document.getElementById('dont-show-again');
-      if (dontShowAgain && dontShowAgain.checked) {
+      const dontShowAgain = document.getElementById('dont-show-again') as HTMLInputElement | null;
+      if (dontShowAgain?.checked) {
         localStorage.setItem('introShown', 'true');
       }
     };
@@ -412,7 +439,7 @@ const MapComponent = () => {
     intro.onexit(saveIntroPreference);
 
     // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
-    let introTimeout;
+    let introTimeout: ReturnType<typeof setTimeout> | undefined;
     if (!localStorage.getItem('introShown')) {
       introTimeout = setTimeout(() => {
         intro.start();
@@ -431,13 +458,16 @@ const MapComponent = () => {
   // Posiciona el popup después de que React dibuje su contenido, para que el desplazamiento
   // automático del mapa (autoPan) use el tamaño real del popup
   useEffect(() => {
-    popupOverlayRef.current.setPosition(selectedFeature ? selectedFeature.coordinate : undefined);
+    popupOverlayRef.current?.setPosition(selectedFeature ? selectedFeature.coordinate : undefined);
   }, [selectedFeature]);
 
   const handleClosePopup = () => setSelectedFeature(null);
 
   // Al hacer clic en la brújula, alterna entre la rotación inicial y el norte arriba
   const handleCompassClick = () => {
+    if (!mapRef.current) {
+      return;
+    }
     const view = mapRef.current.getView();
     view.setRotation(view.getRotation() !== INITIAL_ROTATION ? INITIAL_ROTATION : 0);
   };
