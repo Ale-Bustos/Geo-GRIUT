@@ -1,6 +1,6 @@
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
 import 'ol-ext/dist/ol-ext.css'; // Importa los estilos adicionales de ol-ext
-import React, { useEffect, useRef } from 'react'; // Importa React y algunos hooks necesarios
+import { useEffect, useRef } from 'react'; // Importa los hooks de React necesarios
 import Map from 'ol/Map'; // Importa la clase Map de OpenLayers
 import View from 'ol/View'; // Importa la clase View de OpenLayers
 import LayerGroup from 'ol/layer/Group'; // Importa la clase LayerGroup de OpenLayers
