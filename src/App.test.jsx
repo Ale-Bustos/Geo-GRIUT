@@ -8,7 +8,6 @@ beforeEach(() => {
 test('muestra el mapa, la brújula y el logo de GRIUT', () => {
   const { container } = render(<App />);
   // El visor de OpenLayers no tiene un rol accesible, así que se busca por su clase
-  // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
   expect(container.querySelector('#map .ol-viewport')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /brújula/i })).toBeInTheDocument();
   expect(screen.getByAltText('Logo GRIUT')).toBeInTheDocument();
@@ -18,6 +17,5 @@ test('muestra el mapa, la brújula y el logo de GRIUT', () => {
 test('desmontar el componente elimina el mapa', () => {
   const { container, unmount } = render(<App />);
   unmount();
-  // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
   expect(container.querySelector('.ol-viewport')).not.toBeInTheDocument();
 });
