@@ -1,0 +1,33 @@
+.griut-logo {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  z-index: 1000; /* Por encima del mapa */
+  display: flex;
+  align-items: center;
+  padding: 5px;
+  background-color: rgba(255, 255, 255, 0.8); /* Fondo translúcido */
+  border-radius: 5px;
+}
+
+.griut-logo img {
+  width: 50px; /* Tamaño por defecto para dispositivos móviles */
+  height: auto;
+}
+
+.griut-logo div {
+  font-size: 10px;
+  color: black;
+  margin-left: 3px;
+}
+
+/* Estilo para vistas de escritorio */
+@media (min-width: 768px) {
+  .griut-logo img {
+    width: 90px;
+  }
+
+  .griut-logo div {
+    font-size: 20px;
+  }
+}
