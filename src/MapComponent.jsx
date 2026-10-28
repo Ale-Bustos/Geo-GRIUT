@@ -16,6 +16,7 @@ import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control 
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import './css/logo.css'; // Importa los estilos del logo de GRIUT
 import 'intro.js/introjs.css';
+import './css/tutorial.css'; // Ajustes de estilo del tutorial
 import introJs from 'intro.js'; // Importa introJs como exportación por defecto
 
 // minZoom de OpenLayers es exclusivo (zoom > minZoom); se resta un margen mínimo
@@ -23,6 +24,10 @@ import introJs from 'intro.js'; // Importa introJs como exportación por defecto
 const ZOOM_EPSILON = 0.01;
 
 const INITIAL_ROTATION = -2; // Rotación inicial del mapa
+
+// Las capas con etiquetas se depuran juntas: si dos etiquetas chocan, solo se dibuja la de la capa
+// más arriba en la leyenda (o la primera dentro de la misma capa)
+const LABEL_DECLUTTER_GROUP = 'etiquetas';
 
 // Guarda en caché los estilos por texto: OpenLayers llama a la función de estilo
 // en cada renderizado, así que crear estilos nuevos cada vez es costoso
@@ -58,14 +63,17 @@ const createGeoJsonLayer = (url, style, title, visible = true) => new VectorLaye
         }),
         text: text,
         overflow: true,
-        placement: 'line'
+        placement: 'line',
+        textBaseline: 'bottom', // En los puntos, la etiqueta va encima del símbolo y no sobre él
+        offsetY: -6
       })
     })
   ),
   properties: {
     title: title
   },
-  visible: visible
+  visible: visible,
+  declutter: LABEL_DECLUTTER_GROUP
 });
 
 const createWaterLayer = (url, color, title) => new VectorLayer({
@@ -96,7 +104,8 @@ const createWaterLayer = (url, color, title) => new VectorLayer({
   properties: {
     title: title
   },
-  minZoom: 11.5 - ZOOM_EPSILON // Muestra las capas de agua solo si el zoom es 11.5 o mayor
+  minZoom: 11.5 - ZOOM_EPSILON, // Muestra las capas de agua solo si el zoom es 11.5 o mayor
+  declutter: LABEL_DECLUTTER_GROUP
 });
 
 // Crea todas las capas del mapa (se llama al montar el componente para no compartir capas entre mapas)
@@ -105,7 +114,8 @@ const createLayers = () => {
     image: new CircleStyle({
       radius: 5,
       fill: new Fill({ color: 'red' }),
-      stroke: new Stroke({ color: 'white', width: 1 })
+      stroke: new Stroke({ color: 'white', width: 1 }),
+      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
     })
   }), 'Conflictos Socio-Ambientales', false);
 
@@ -113,7 +123,8 @@ const createLayers = () => {
     image: new CircleStyle({
       radius: 5,
       fill: new Fill({ color: 'yellow' }),
-      stroke: new Stroke({ color: 'black', width: 1 })
+      stroke: new Stroke({ color: 'black', width: 1 }),
+      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
     })
   }), 'Puntos Historicos', false);
 
@@ -121,7 +132,8 @@ const createLayers = () => {
     image: new CircleStyle({
       radius: 5,
       fill: new Fill({ color: 'purple' }),
-      stroke: new Stroke({ color: 'white', width: 1 })
+      stroke: new Stroke({ color: 'white', width: 1 }),
+      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
     })
   }), 'Puntos de Resignificación', false);
 
@@ -187,14 +199,16 @@ const createLayers = () => {
           text: text, // Texto que se mostrará en el mapa
           overflow: true, // Permitir que el texto se desborde si es necesario
           placement: 'point', // Colocación del texto: en el punto del feature
-          textAlign: 'center' // Alineación del texto: centrado
+          textAlign: 'center', // Alineación del texto: centrado
+          declutterMode: 'obstacle' // Los topónimos siempre se dibujan; las demás etiquetas los esquivan
         })
       })
     ),
     properties: {
       title: 'Toponimia'
     },
-    minZoom: 10.5 - ZOOM_EPSILON // Muestra la capa de Toponimia si el zoom es 10.5 o mayor
+    minZoom: 10.5 - ZOOM_EPSILON, // Muestra la capa de Toponimia si el zoom es 10.5 o mayor
+    declutter: LABEL_DECLUTTER_GROUP
   });
 
   return [
