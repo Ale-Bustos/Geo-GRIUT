@@ -350,7 +350,15 @@ const MapComponent = () => {
   return (
     <div>
       <div id="map" style={{ width: '100%', height: '100vh' }}></div>
-      <div id="compass" className="compass" ref={compassRef} onClick={handleCompassClick}></div>
+      <button
+        type="button"
+        id="compass"
+        className="compass"
+        ref={compassRef}
+        onClick={handleCompassClick}
+        aria-label="Brújula: restablecer la orientación del mapa"
+        title="Restablecer orientación"
+      ></button>
       <div className="griut-logo">
         <img src="logo01.png" alt="Logo GRIUT" />
         <div><b>Grupo de Estudios Interculturales<br />Urbanos y Territoriales</b></div>

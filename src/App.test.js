@@ -1,8 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+beforeEach(() => {
+  localStorage.setItem('introShown', 'true'); // Evita que el tutorial se inicie durante los tests
+});
+
+test('muestra el mapa, la brújula y el logo de GRIUT', () => {
+  const { container } = render(<App />);
+  // El visor de OpenLayers no tiene un rol accesible, así que se busca por su clase
+  // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+  expect(container.querySelector('#map .ol-viewport')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /brújula/i })).toBeInTheDocument();
+  expect(screen.getByAltText('Logo GRIUT')).toBeInTheDocument();
+  expect(screen.getByText(/Grupo de Estudios Interculturales/)).toBeInTheDocument();
+});
+
+test('desmontar el componente elimina el mapa', () => {
+  const { container, unmount } = render(<App />);
+  unmount();
+  // eslint-disable-next-line testing-library/no-container, testing-library/no-node-access
+  expect(container.querySelector('.ol-viewport')).not.toBeInTheDocument();
 });

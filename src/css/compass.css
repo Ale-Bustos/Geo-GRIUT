@@ -6,10 +6,21 @@
     height: 60px;
     background-image: url('../img/compass.png'); /* Ruta a la imagen de la brújula */
     background-size: contain;
+    background-color: transparent; /* Quita los estilos por defecto del botón */
+    border: none;
+    padding: 0;
+    cursor: pointer;
     transform-origin: center center;
     z-index: 1000;
   }
   
+  /* Anillo de foco redondo para la navegación con teclado */
+  .compass:focus-visible {
+    outline: 3px solid #1a73e8;
+    outline-offset: 2px;
+    border-radius: 50%;
+  }
+
   /* Estilo para vistas de escritorio */
   @media (min-width: 768px) {
     .compass {
