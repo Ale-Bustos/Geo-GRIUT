@@ -524,6 +524,7 @@ const MapComponent = () => {
     // Popup con la información de los puntos
     const popupOverlay = new Overlay({
       element: popupElement,
+      className: 'ol-overlay-container ol-selectable popup-overlay', // popup-overlay lo deja sobre el selector de capas
       autoPan: { animation: { duration: 250 } } // Desplaza el mapa si el popup queda fuera de la vista
     });
     map.addOverlay(popupOverlay);
