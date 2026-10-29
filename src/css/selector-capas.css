@@ -179,6 +179,10 @@
     border-radius: 16px 16px 0 0;
     z-index: 2;
   }
+  .sc-hoja-abierta .sc-cuerpo { padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+  /* Filas e interruptores más altos en la lista completa, para tocarlos sin errar */
+  .sc-linea { min-height: 44px; }
+  .sc-boton { width: 40px; height: 40px; }
 
   .sc-fab {
     pointer-events: auto;
@@ -242,7 +246,7 @@
     position: absolute;
     left: 0.5em;
     right: 0.5em;
-    bottom: 2.25em; /* deja ver la atribución */
+    bottom: calc(2.25em + env(safe-area-inset-bottom, 0px)); /* deja ver la atribución y libra la barra de gestos */
     display: flex;
     gap: 8px;
     width: max-content;
@@ -257,13 +261,15 @@
   }
   .sc-chips::-webkit-scrollbar { display: none; }
   .sc-hoja-abierta .sc-chips { display: none; }
+  /* Botones de al menos 40px de alto: cómodos de tocar con el dedo */
   .sc-chip {
     flex: none;
-    padding: 7px 14px;
+    min-height: 40px;
+    padding: 9px 16px;
     border: 1px solid var(--sc-apagado);
     border-radius: 999px;
     background: #fff;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 600;
     color: var(--sc-secundario);
     white-space: nowrap;
