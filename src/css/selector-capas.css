@@ -161,7 +161,7 @@
 /* ---------- Celular ---------- */
 .sc-fab, .sc-chips { display: none; }
 
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 500px) {
   .sc-panel { display: none; }
   .sc-minimizar { display: none; }
   .sc-cerrar { display: inline-grid; }
@@ -257,11 +257,19 @@
 /* ---------- Ajustes para Geo-GRIUT ---------- */
 /* El selector empieza bajo el logo de GRIUT (esquina superior derecha) para no taparlo */
 .sc { --sc-tope: 76px; }
-@media (min-width: 768px) {
+@media (min-width: 768px) and (min-height: 501px) {
   .sc { --sc-tope: 112px; }
 }
 .sc-panel { top: var(--sc-tope); max-height: calc(100% - var(--sc-tope) - 2.5em); }
-@media (max-width: 640px) {
+@media (max-width: 640px), (max-height: 500px) {
   .sc-fab { top: var(--sc-tope); }
   .sc-hoja-abierta .sc-panel { top: calc(var(--sc-tope) + 52px); max-height: calc(100% - var(--sc-tope) - 52px - 0.75em - env(safe-area-inset-bottom, 0px)); }
+}
+/* Celular acostado: la ventana de capas va al lado del botón, así aprovecha el alto */
+@media (max-height: 500px) and (min-width: 641px) {
+  .sc-hoja-abierta .sc-panel {
+    top: var(--sc-tope);
+    right: calc(0.75em + 52px);
+    max-height: calc(100% - var(--sc-tope) - 0.75em - env(safe-area-inset-bottom, 0px));
+  }
 }

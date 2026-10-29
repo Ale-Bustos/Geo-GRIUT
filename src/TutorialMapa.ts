@@ -28,6 +28,7 @@ export interface OpcionesTutorial {
 // Números en mapudungun (1–10) para el contador de pasos
 const NUMEROS = ['Kiñe', 'Epu', 'Küla', 'Meli', 'Kechu', 'Kayu', 'Regle', 'Pura', 'Aylla', 'Mari'];
 export const ANCHO_MOVIL = 640;
+export const ALTO_MOVIL = 500; // Celular acostado: ancho de escritorio pero poco alto
 
 function crear<K extends keyof HTMLElementTagNameMap>(tag: K, clase?: string | null, attrs?: Record<string, string>) {
   const e = document.createElement(tag);
@@ -242,14 +243,16 @@ export default class TutorialMapa {
     }
   };
 
-  private _alRedimensionar = () => this._posicionar();
+  // Al girar el teléfono el diseño cambia; se espera un cuadro para medir con el diseño nuevo
+  private _alRedimensionar = () => requestAnimationFrame(() => this._posicionar());
 
   /** Destaca el elemento del paso (si existe) y ubica la tarjeta a su lado. */
   private _posicionar() {
     if (!this._abierto || !this._raiz) return;
     const p = this.pasos[this.indice];
-    const movil = window.innerWidth <= ANCHO_MOVIL;
-    const sel = (movil && p.objetivoMovil) || p.objetivo;
+    const movil = window.innerWidth <= ANCHO_MOVIL; // Vertical: tarjeta abajo
+    const celular = movil || window.innerHeight <= ALTO_MOVIL; // También acostado: controles de celular
+    const sel = (celular && p.objetivoMovil) || p.objetivo;
     const objetivo = sel ? document.querySelector(sel) : null;
     const r = objetivo?.getBoundingClientRect();
     const visible = Boolean(r && r.width > 0 && r.height > 0);

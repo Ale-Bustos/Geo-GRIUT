@@ -2,10 +2,8 @@
     position: absolute;
     top: 10px;
     left: 10px; /* Cambiado a 'left' para ubicarlo en la esquina superior izquierda */
-    width: 60px; /* Tamaño por defecto para dispositivos móviles */
-    height: 60px;
-    background-image: url('../img/compass.png'); /* Ruta a la imagen de la brújula */
-    background-size: contain;
+    width: 116px; /* Celular: lo justo para que los nombres se lean sin chocar con el logo */
+    height: 116px;
     background-color: transparent; /* Quita los estilos por defecto del botón */
     border: none;
     padding: 0;
@@ -16,6 +14,22 @@
     z-index: 1000;
   }
   
+  .compass svg { display: block; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+
+  /* Halo claro alrededor del dibujo y de las letras para que se lean sobre cualquier fondo del mapa */
+  .compass-simbolo { filter: drop-shadow(0 0 1.5px rgba(250, 247, 242, 0.95)); }
+  .compass-nombre {
+    font-family: "Segoe UI", Inter, "Source Sans 3", system-ui, -apple-system, sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    fill: #1C1917;
+    stroke: #FAF7F2;
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    paint-order: stroke;
+  }
+  .compass-puel { fill: #D0101C; } /* Puelmapu en rojo, como en el dibujo original */
+
   .compass:active {
     cursor: grabbing;
   }
@@ -28,7 +42,7 @@
   }
 
   /* Estilo para vistas de escritorio */
-  @media (min-width: 768px) {
+  @media (min-width: 768px) and (min-height: 501px) {
     .compass {
       width: 150px; /* Tamaño para vista de escritorio */
       height: 150px;

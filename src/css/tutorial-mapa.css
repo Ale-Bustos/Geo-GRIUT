@@ -130,7 +130,27 @@
     width: auto;
     transform: none;
     max-height: 70vh;
+    max-height: 70dvh;
   }
+  .tu-boton { padding: 10px 14px; white-space: nowrap; }
+}
+
+/* Celular acostado: la tarjeta va al lado del elemento destacado (JS) y se compacta para caber en el alto */
+@media (max-height: 500px) and (min-width: 641px) {
+  .tu-tarjeta { width: min(440px, calc(100vw - 24px)); }
+  .tu-progreso { gap: 8px; }
+  .tu-banda { height: 12px; background-size: 24px 12px; }
+  .tu-cuerpo { padding: 10px 18px 12px; }
+  .tu-contenido { padding-top: 4px; }
+  .tu-icono { width: 30px; height: 30px; margin-bottom: 4px; }
+  .tu-saludo { font-size: 14px; }
+  .tu-titulo { margin-bottom: 4px; font-size: 17px; }
+  .tu-texto { font-size: 13.5px; line-height: 1.45; }
+  .tu-texto p { margin-bottom: 4px; }
+  /* Avance y botones en una sola fila */
+  .tu-pie { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .tu-acciones { margin: 0 0 0 auto; }
+  .tu-boton { padding: 8px 14px; white-space: nowrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
