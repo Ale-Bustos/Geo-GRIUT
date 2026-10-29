@@ -1,116 +1,181 @@
-/* Popup de los puntos del mapa (basado en el ejemplo de popup de OpenLayers) */
+/* Popup de los puntos del mapa — misma paleta del textil mapuche que el tutorial:
+   kelü (rojo), kurü (negro), lig (blanco) y kallfü (azul). */
 
 .ol-popup {
+  --pp-kelu: #8B1E1E;
+  --pp-kuru: #1C1917;
+  --pp-lig: #FAF7F2;
+  --pp-kallfu: #2B3A8C;
+  --pp-texto: #292524;
+  --pp-secundario: #78716C;
+  --pp-linea: #E7E1D8;
+  --pp-fuente: "Segoe UI", Inter, "Source Sans 3", system-ui, -apple-system, sans-serif;
+  /* Banda de ñimin: rombo escalonado negro sobre rojo, centro blanco */
+  --pp-nimin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12' shape-rendering='crispEdges'%3E%3Crect width='24' height='12' fill='%238B1E1E'/%3E%3Cpath d='M11 0h2v2h2v2h2v4h-2v2h-2v2h-2v-2h-2v-2h-2v-4h2v-2h2z' fill='%231C1917'/%3E%3Crect x='11' y='5' width='2' height='2' fill='%23FAF7F2'/%3E%3Crect x='0' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3Crect x='23' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3C/svg%3E");
+
   position: absolute;
-  background-color: white;
-  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.2));
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px solid #cccccc;
-  bottom: 12px;
+  bottom: 14px;
   left: -50px;
-  width: max-content;
-  min-width: 220px;
-  max-width: min(320px, 80vw);
-  max-height: 50vh;
-  overflow-y: auto;
+  font-family: var(--pp-fuente);
   font-size: 14px;
-  line-height: 1.35;
-  color: #222;
+  line-height: 1.4;
+  color: var(--pp-texto);
+  filter: drop-shadow(0 6px 16px rgba(28, 25, 23, 0.25));
 }
 
-.ol-popup:after, .ol-popup:before {
-  top: 100%;
-  border: solid transparent;
-  content: " ";
-  height: 0;
-  width: 0;
+.ol-popup *, .ol-popup *::before, .ol-popup *::after { box-sizing: border-box; }
+
+/* Comparte contenedor con el selector de capas (botones con z-index 2): el popup va encima */
+.popup-overlay { z-index: 3; }
+
+/* Flecha hacia el punto; va fuera de la tarjeta para que el desplazamiento interno no la recorte */
+.ol-popup:after {
+  content: "";
   position: absolute;
+  top: 100%;
+  left: 38px;
+  border: 10px solid transparent;
+  border-top-color: var(--pp-lig);
   pointer-events: none;
 }
 
-.ol-popup:after {
-  border-color: rgba(255, 255, 255, 0);
-  border-top-color: white;
-  border-width: 10px;
-  left: 48px;
-  margin-left: -10px;
+.feature-popup {
+  position: relative;
+  width: max-content;
+  min-width: 240px;
+  max-width: min(340px, calc(100vw - 32px));
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--pp-lig);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: pp-entra 0.2s ease both;
+}
+
+@keyframes pp-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.feature-popup-banda {
+  flex: none;
+  height: 14px;
+  background: var(--pp-nimin) repeat-x center / 28px 14px;
+  border-bottom: 2px solid var(--pp-kuru);
 }
 
 .ol-popup-closer {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 22px;
+  right: 10px;
+  display: inline-grid;
+  place-items: center;
   width: 28px;
   height: 28px;
   padding: 0;
-  border: none;
-  border-radius: 50%;
+  border: 0;
+  border-radius: 8px;
   background: transparent;
-  color: #555;
-  font-size: 14px;
+  color: var(--pp-secundario);
+  font: inherit;
+  font-size: 18px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.ol-popup-closer:hover,
-.ol-popup-closer:focus-visible {
-  background-color: #eee;
-  color: #000;
+.ol-popup-closer:hover { background: #F0ECE6; color: var(--pp-kuru); }
+.ol-popup-closer:focus-visible { outline: 2px solid var(--pp-kallfu); outline-offset: 2px; }
+.ol-popup-closer:after { content: "×"; }
+
+.feature-popup-cuerpo {
+  padding: 12px 18px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.ol-popup-closer:after {
-  content: "✖";
-}
-
+/* Categoría con un rombo, como los del avance del tutorial */
 .feature-popup-category {
-  margin: 0 28px 2px 0;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 32px 4px 0;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: #8b4513;
+  color: var(--pp-kelu);
+}
+
+.feature-popup-category::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--pp-kelu);
+  transform: rotate(45deg);
 }
 
 .feature-popup-title {
-  margin: 0 28px 8px 0;
-  font-size: 17px;
+  margin: 0 32px 10px 0;
+  font-size: 18px;
+  font-weight: 700;
   line-height: 1.25;
+  color: var(--pp-kuru);
 }
 
-.feature-popup dl {
-  margin: 0;
-}
+.feature-popup dl { margin: 0; }
 
 .feature-popup dl > div {
-  margin-top: 6px;
+  padding: 7px 0;
+  border-top: 1px solid var(--pp-linea);
 }
 
-.feature-popup dt {
-  font-size: 12px;
-  color: #666;
+.feature-popup dt,
+.feature-popup-sources span {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pp-secundario);
 }
 
 .feature-popup dd {
-  margin: 0;
+  margin: 2px 0 0;
+  font-size: 14px;
 }
 
 .feature-popup-sources {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #e5e5e5;
-  font-size: 13px;
-}
-
-.feature-popup-sources span {
-  color: #666;
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px solid var(--pp-linea);
 }
 
 .feature-popup-sources ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+/* Cada fuente como etiqueta; los enlaces en kallfü */
+.feature-popup-sources li {
+  padding: 3px 9px;
+  border: 1px solid var(--pp-linea);
+  border-radius: 999px;
+  background: #FFFFFF;
+  overflow-wrap: anywhere;
 }
 
 .feature-popup-sources a {
-  color: #0b62c4;
-  word-break: break-all;
+  color: var(--pp-kallfu);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.feature-popup-sources a:hover { text-decoration: underline; }
+.feature-popup-sources a:focus-visible { outline: 2px solid var(--pp-kallfu); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-popup { animation: none; }
 }

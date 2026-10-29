@@ -50,6 +50,19 @@ const linkLabel = (url: string) => {
   }
 };
 
+// Etiqueta de cada enlace; si varios son del mismo sitio se numeran para distinguirlos
+const linkLabels = (sources: Source[]) => {
+  const domains = sources.map((source) => (source.url ? linkLabel(source.url) : ''));
+  const seen: Record<string, number> = {};
+  return domains.map((domain) => {
+    if (!domain || domains.filter((other) => other === domain).length === 1) {
+      return domain;
+    }
+    seen[domain] = (seen[domain] ?? 0) + 1;
+    return `${domain} (${seen[domain]})`;
+  });
+};
+
 interface FeaturePopupProps {
   properties: Properties;
   category: string;
@@ -61,36 +74,40 @@ const FeaturePopup = ({ properties, category, onClose }: FeaturePopupProps) => {
   const title = String(properties.PopupInfo || properties.Name || properties.Nombre || '').trim();
   const fields = POPUP_FIELDS.filter(({ key }) => !isEmpty(properties[key]));
   const sources = parseSources(properties);
+  const labels = linkLabels(sources);
 
   return (
     <div className="feature-popup" role="dialog" aria-label={title}>
+      <div className="feature-popup-banda" aria-hidden="true"></div>
       <button type="button" className="ol-popup-closer" onClick={onClose} aria-label="Cerrar" title="Cerrar"></button>
-      <p className="feature-popup-category">{String(properties.Copia_de11 || category)}</p>
-      <h2 className="feature-popup-title">{title}</h2>
-      {fields.length > 0 && (
-        <dl>
-          {fields.map(({ key, label }) => (
-            <div key={key}>
-              <dt>{label}</dt>
-              <dd>{capitalize(String(properties[key]).trim())}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      {sources.length > 0 && (
-        <div className="feature-popup-sources">
-          <span>Fuentes:</span>
-          <ul>
-            {sources.map((source, index) => (
-              <li key={index}>
-                {source.url
-                  ? <a href={source.url} target="_blank" rel="noopener noreferrer">{linkLabel(source.url)}</a>
-                  : source.text}
-              </li>
+      <div className="feature-popup-cuerpo">
+        <p className="feature-popup-category">{String(properties.Copia_de11 || category)}</p>
+        <h2 className="feature-popup-title">{title}</h2>
+        {fields.length > 0 && (
+          <dl>
+            {fields.map(({ key, label }) => (
+              <div key={key}>
+                <dt>{label}</dt>
+                <dd>{capitalize(String(properties[key]).trim())}</dd>
+              </div>
             ))}
-          </ul>
-        </div>
-      )}
+          </dl>
+        )}
+        {sources.length > 0 && (
+          <div className="feature-popup-sources">
+            <span>Fuentes</span>
+            <ul>
+              {sources.map((source, index) => (
+                <li key={index}>
+                  {source.url
+                    ? <a href={source.url} target="_blank" rel="noopener noreferrer">{labels[index]}</a>
+                    : source.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

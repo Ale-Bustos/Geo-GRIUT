@@ -39,5 +39,13 @@ test('usa la categoría de la capa cuando el punto no trae una', () => {
   render(<FeaturePopup properties={{ Name: 'Batalla de Andalien' }} category="Punto histórico" onClose={() => {}} />);
   expect(screen.getByText('Punto histórico')).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'Batalla de Andalien' })).toBeInTheDocument();
-  expect(screen.queryByText('Fuentes:')).not.toBeInTheDocument();
+  expect(screen.queryByText('Fuentes')).not.toBeInTheDocument();
+});
+
+test('numera los enlaces que son del mismo sitio', () => {
+  const properties = { Name: 'Proyecto', Copia_de10: 'https://seia.sea.gob.cl/a https://seia.sea.gob.cl/b https://otro.cl/c' };
+  render(<FeaturePopup properties={properties} category="Conflicto socioambiental" onClose={() => {}} />);
+  expect(screen.getByRole('link', { name: 'seia.sea.gob.cl (1)' })).toHaveAttribute('href', 'https://seia.sea.gob.cl/a');
+  expect(screen.getByRole('link', { name: 'seia.sea.gob.cl (2)' })).toHaveAttribute('href', 'https://seia.sea.gob.cl/b');
+  expect(screen.getByRole('link', { name: 'otro.cl' })).toBeInTheDocument();
 });
