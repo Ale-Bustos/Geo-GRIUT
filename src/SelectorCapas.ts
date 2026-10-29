@@ -143,7 +143,11 @@ export default class SelectorCapas extends Control {
   private _alPulsarFuera?: (e: PointerEvent) => void;
 
   constructor(opciones: OpcionesSelectorCapas) {
-    super({ element: crear('div', 'sc ol-unselectable'), target: opciones.target });
+    const elemento = crear('div', 'sc ol-unselectable');
+    // La raíz cubre todo el mapa: sin esto OpenLayers le pone pointer-events: auto y bloquea
+    // el zoom y el arrastre del mapa. Solo el panel, los chips y el botón reciben clics (ver CSS)
+    elemento.style.pointerEvents = 'none';
+    super({ element: elemento, target: opciones.target });
     this.opciones = opciones;
     this.grupos = opciones.grupos || [];
     this.mapasBase = (opciones.mapasBase || []).filter((m): m is MapaBase & { capa: BaseLayer } => Boolean(m && m.capa));
