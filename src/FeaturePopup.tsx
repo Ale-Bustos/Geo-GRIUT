@@ -15,20 +15,26 @@ const POPUP_FIELDS = [
 const LINK_FIELDS = ['Copia_de10', 'Copia_de12'];
 
 // Valores que en los datos significan "sin información"
-const isEmpty = (value) => value === null || value === undefined || String(value).trim() === '' || String(value).trim() === '-';
+const isEmpty = (value: unknown) => value === null || value === undefined || String(value).trim() === '' || String(value).trim() === '-';
 
-const capitalize = (text) => text.charAt(0).toUpperCase() + text.slice(1);
+const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
+type Properties = Record<string, unknown>;
+
+// Una fuente es una URL o un texto sin enlace
+type Source = { url: string; text?: never } | { text: string; url?: never };
 
 // Separa un texto en URLs (que se muestran como enlaces) y texto normal
-const parseSources = (properties) => LINK_FIELDS
+const parseSources = (properties: Properties) => LINK_FIELDS
   .filter((key) => !isEmpty(properties[key]))
   .flatMap((key) => String(properties[key]).split(/\s+/))
   .filter((part) => part !== '')
-  .reduce((sources, part) => {
+  .reduce<Source[]>((sources, part) => {
+    const last = sources[sources.length - 1];
     if (/^https?:\/\//i.test(part)) {
       sources.push({ url: part });
-    } else if (sources.length > 0 && !sources[sources.length - 1].url) {
-      sources[sources.length - 1].text += ' ' + part; // Junta palabras sueltas en un solo texto
+    } else if (last && last.text !== undefined) {
+      last.text += ' ' + part; // Junta palabras sueltas en un solo texto
     } else {
       sources.push({ text: part });
     }
@@ -36,7 +42,7 @@ const parseSources = (properties) => LINK_FIELDS
   }, []);
 
 // Muestra el dominio del enlace en vez de la URL completa
-const linkLabel = (url) => {
+const linkLabel = (url: string) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {
@@ -44,16 +50,22 @@ const linkLabel = (url) => {
   }
 };
 
+interface FeaturePopupProps {
+  properties: Properties;
+  category: string;
+  onClose: () => void;
+}
+
 // Contenido del popup de un punto del mapa
-const FeaturePopup = ({ properties, category, onClose }) => {
-  const title = (properties.PopupInfo || properties.Name || properties.Nombre || '').trim();
+const FeaturePopup = ({ properties, category, onClose }: FeaturePopupProps) => {
+  const title = String(properties.PopupInfo || properties.Name || properties.Nombre || '').trim();
   const fields = POPUP_FIELDS.filter(({ key }) => !isEmpty(properties[key]));
   const sources = parseSources(properties);
 
   return (
     <div className="feature-popup" role="dialog" aria-label={title}>
       <button type="button" className="ol-popup-closer" onClick={onClose} aria-label="Cerrar" title="Cerrar"></button>
-      <p className="feature-popup-category">{properties.Copia_de11 || category}</p>
+      <p className="feature-popup-category">{String(properties.Copia_de11 || category)}</p>
       <h2 className="feature-popup-title">{title}</h2>
       {fields.length > 0 && (
         <dl>

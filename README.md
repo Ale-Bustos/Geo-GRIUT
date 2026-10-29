@@ -2,11 +2,12 @@
 
 Visualizador de mapas interactivo del Grupo de Estudios Interculturales Urbanos y Territoriales (GRIUT).
 
-Construido con [React](https://react.dev), [OpenLayers](https://openlayers.org) y [ol-ext](https://viglino.github.io/ol-ext/), empaquetado con [Vite](https://vite.dev) y publicado en Vercel.
+Construido con [React](https://react.dev) y [TypeScript](https://www.typescriptlang.org), [OpenLayers](https://openlayers.org) y [ol-ext](https://viglino.github.io/ol-ext/), empaquetado con [Vite](https://vite.dev) y publicado en Vercel.
 
 ## Requisitos
 
 - Node.js 22
+- Un token público de Mapbox: copia `.env.example` como `.env.local` y completa `VITE_MAPBOX_TOKEN`. En Vercel, la misma variable se define en *Settings → Environment Variables*.
 
 ## Scripts
 
@@ -14,14 +15,16 @@ Construido con [React](https://react.dev), [OpenLayers](https://openlayers.org) 
 |---|---|
 | `npm install` | Instala las dependencias |
 | `npm run dev` (o `npm start`) | Servidor de desarrollo en http://localhost:3000 |
-| `npm run build` | Genera la versión de producción en `dist/` |
+| `npm run build` | Revisa los tipos y genera la versión de producción en `dist/` |
 | `npm run preview` | Sirve localmente la versión de producción |
 | `npm test` | Ejecuta los tests con Vitest |
 | `npm run lint` | Revisa el código con ESLint |
+| `npm run typecheck` | Revisa los tipos con TypeScript |
 
 ## Estructura
 
-- `src/MapComponent.jsx`: mapa, capas, leyenda, brújula y tutorial.
+- `src/MapComponent.tsx`: mapa, capas, leyenda, brújula y tutorial.
+- `src/FeaturePopup.tsx`: contenido del popup de los puntos.
 - `public/geojson/`: capas vectoriales (ríos, esteros, quebradas, límite provincial, toponimia, conflictos, puntos históricos y de resignificación).
 - `vercel.json`: configuración de despliegue.
 
