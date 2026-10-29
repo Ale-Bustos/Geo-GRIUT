@@ -12,6 +12,9 @@ import { defaults as defaultControls, ScaleLine } from 'ol/control'; // Importa 
 import VectorLayer from 'ol/layer/Vector'; // Importa la clase VectorLayer de OpenLayers
 import VectorSource from 'ol/source/Vector'; // Importa la clase VectorSource de OpenLayers
 import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLayers
+import VectorTileLayer from 'ol/layer/VectorTile'; // Capa de teselas vectoriales
+import VectorTileSource from 'ol/source/VectorTile'; // Fuente de teselas vectoriales
+import MVT from 'ol/format/MVT'; // Formato Mapbox Vector Tile que entrega GeoServer
 import { Style, Fill, Stroke, Circle as CircleStyle, Icon, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
 import type ImageStyle from 'ol/style/Image';
 import Point from 'ol/geom/Point';
@@ -125,12 +128,22 @@ const createLabel = (text: string, offsetY: number) => new Text({
   offsetY: offsetY
 });
 
-// Función para crear capas GeoJSON con estilos personalizados
-const createGeoJsonLayer = (url: string, style: Style, title: string, visible = true) => new VectorLayer({
-  source: new VectorSource({
-    url: url,
-    format: new GeoJSON()
-  }),
+// GeoServer de GRIUT: sirve las capas pesadas como teselas vectoriales que GeoWebCache guarda en caché
+const GEOSERVER_URL = 'https://geo.myc-ingenieria.cl/geoserver';
+// Último zoom precalculado en el servidor; más cerca, OpenLayers amplía las teselas de este nivel
+const GEOSERVER_MAX_ZOOM = 16;
+
+// Fuente de teselas vectoriales (MVT) de una capa del workspace griut de GeoServer
+const createGeoServerTileSource = (layerName: string) => new VectorTileSource({
+  format: new MVT(),
+  // TMS numera las filas de abajo hacia arriba, de ahí {-y}
+  url: `${GEOSERVER_URL}/gwc/service/tms/1.0.0/griut:${layerName}@EPSG:900913@pbf/{z}/{x}/{-y}.pbf`,
+  maxZoom: GEOSERVER_MAX_ZOOM
+});
+
+// Función para crear capas de teselas vectoriales de GeoServer con estilos personalizados
+const createGeoServerLayer = (layerName: string, style: Style, title: string, visible = true) => new VectorTileLayer({
+  source: createGeoServerTileSource(layerName),
   style: createCachedStyleFunction(
     getLabel,
     (text) => new Style({
@@ -214,11 +227,8 @@ const createPointLayer = (
   });
 };
 
-const createWaterLayer = (url: string, color: string, title: string) => new VectorLayer({
-  source: new VectorSource({
-    url,
-    format: new GeoJSON()
-  }),
+const createWaterLayer = (layerName: string, color: string, title: string) => new VectorTileLayer({
+  source: createGeoServerTileSource(layerName),
   style: createCachedStyleFunction(
     (feature) => feature.get('Nombre'),
     (text) => new Style({
@@ -274,9 +284,9 @@ const createLayers = () => {
   const puntosResignificacionLayer = createPointLayer('/geojson/Puntos_Resignificacion.geojson', 'Puntos de Resignificación',
     'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
 
-  const esterosLayer = createWaterLayer('/geojson/Esteros.geojson', '#6dceff', 'Esteros');
-  const riosLayer = createWaterLayer('/geojson/Rios.geojson', '#6dceff', 'Ríos');
-  const quebradasLayer = createWaterLayer('/geojson/Quebradas.geojson', '#6dceff', 'Quebradas');
+  const esterosLayer = createWaterLayer('esteros', '#6dceff', 'Esteros');
+  const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos');
+  const quebradasLayer = createWaterLayer('quebradas', '#6dceff', 'Quebradas');
 
   const nahuelbutaLayer = new VectorLayer({
     source: new VectorSource({
@@ -309,7 +319,7 @@ const createLayers = () => {
     minZoom: 11 - ZOOM_EPSILON // Muestra la capa de Nahuelbuta si el zoom es 11 o mayor
   });
 
-  const provConceLayer = createGeoJsonLayer('/geojson/Prov_Conce.geojson', new Style({
+  const provConceLayer = createGeoServerLayer('prov_conce', new Style({
     stroke: new Stroke({
       color: '#8B4513',
       width: 1,
