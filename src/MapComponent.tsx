@@ -15,6 +15,9 @@ import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLa
 import VectorTileLayer from 'ol/layer/VectorTile'; // Capa de teselas vectoriales
 import VectorTileSource from 'ol/source/VectorTile'; // Fuente de teselas vectoriales
 import MVT from 'ol/format/MVT'; // Formato Mapbox Vector Tile que entrega GeoServer
+import RenderFeature from 'ol/render/Feature'; // Elementos livianos que entregan las teselas vectoriales
+import MultiLineString from 'ol/geom/MultiLineString';
+import { douglasPeuckerArray } from 'ol/geom/flat/simplify';
 import { Style, Fill, Stroke, Circle as CircleStyle, Icon, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
 import type ImageStyle from 'ol/style/Image';
 import Point from 'ol/geom/Point';
@@ -75,6 +78,9 @@ const pointerAngle = (element: HTMLElement, clientX: number, clientY: number) =>
 // más arriba en la leyenda (o la primera dentro de la misma capa)
 const LABEL_DECLUTTER_GROUP = 'etiquetas';
 
+// Fuentes de las etiquetas del mapa: las del sistema de cada dispositivo (Calibri solo existe en Windows)
+const LABEL_FONT_FAMILY = '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
 
@@ -115,7 +121,7 @@ const getLabel = (feature: FeatureLike): string | undefined =>
 
 // Etiqueta de las capas GeoJSON; en los puntos va encima del símbolo (a offsetY píxeles) y no sobre él
 const createLabel = (text: string, offsetY: number) => new Text({
-  font: '16px Calibri,sans-serif',
+  font: `16px ${LABEL_FONT_FAMILY}`,
   fill: new Fill({ color: '#000' }),
   stroke: new Stroke({
     color: '#fff',
@@ -227,34 +233,71 @@ const createPointLayer = (
   });
 };
 
-const createWaterLayer = (layerName: string, color: string, title: string) => new VectorTileLayer({
-  source: createGeoServerTileSource(layerName),
-  style: createCachedStyleFunction(
-    (feature) => feature.get('Nombre'),
-    (text) => new Style({
-      stroke: new Stroke({
-        color: color,
-        width: 2
-      }),
-      text: new Text({
-        font: 'italic 14px Calibri,sans-serif',
-        fill: new Fill({ color: color }),
-        stroke: new Stroke({
-          color: '#ffffff',
-          width: 2
-        }),
-        text: text,
-        overflow: true,
-        placement: 'line'
-      })
+// Azul oscuro para los nombres del agua: el celeste de las líneas no se lee como texto sobre el mapa
+const WATER_LABEL_COLOR = '#1b5e86';
+
+// Las etiquetas siguen el cauce mientras no se doble más que esto entre letras (~36°)
+const WATER_LABEL_MAX_ANGLE = Math.PI / 5;
+
+// Detalle en píxeles que se ignora al trazar el camino de una etiqueta. Los cauces están digitalizados
+// con muchos vértices y zigzaguean a escala de pocos píxeles: sin simplificar, OpenLayers no encuentra
+// un tramo parejo donde quepa el nombre
+const WATER_LABEL_SIMPLIFY_PX = 12;
+
+// Línea suavizada para la resolución actual, sobre la que se escribe el nombre (la línea se dibuja completa)
+const simplifyForLabel = (feature: FeatureLike, resolution: number) => {
+  if (!(feature instanceof RenderFeature)) {
+    return undefined;
+  }
+  const tolerance = WATER_LABEL_SIMPLIFY_PX * resolution;
+  const flatCoordinates = feature.getFlatCoordinates();
+  const ends = feature.getEnds() as number[];
+  const simplified: number[] = [];
+  const simplifiedEnds: number[] = [];
+  douglasPeuckerArray(flatCoordinates, 0, ends, 2, tolerance * tolerance, simplified, 0, simplifiedEnds);
+  return new MultiLineString(simplified, 'XY', simplifiedEnds);
+};
+
+// labelFont: tamaño y peso del nombre, para que los ríos destaquen sobre esteros y quebradas
+const createWaterLayer = (layerName: string, color: string, title: string, labelFont: string) => {
+  const lineStyle = new Style({
+    stroke: new Stroke({
+      color: color,
+      width: 2
     })
-  ),
-  properties: {
-    title: title
-  },
-  minZoom: 11.5 - ZOOM_EPSILON, // Muestra las capas de agua solo si el zoom es 11.5 o mayor
-  declutter: LABEL_DECLUTTER_GROUP
-});
+  });
+  const labels: Record<string, Text> = {}; // Un texto por nombre; la geometría cambia en cada elemento
+  return new VectorTileLayer({
+    source: createGeoServerTileSource(layerName),
+    style: (feature, resolution) => {
+      const name = feature.get('Nombre');
+      if (!name) {
+        return lineStyle;
+      }
+      if (!labels[name]) {
+        labels[name] = new Text({
+          font: `italic ${labelFont} ${LABEL_FONT_FAMILY}`,
+          fill: new Fill({ color: WATER_LABEL_COLOR }),
+          stroke: new Stroke({
+            color: 'rgba(255, 255, 255, 0.9)',
+            width: 3
+          }),
+          text: name,
+          // Solo se escribe en los tramos donde el nombre cabe completo, sin salirse del cauce
+          overflow: false,
+          placement: 'line',
+          maxAngle: WATER_LABEL_MAX_ANGLE
+        });
+      }
+      return [lineStyle, new Style({ geometry: simplifyForLabel(feature, resolution), text: labels[name] })];
+    },
+    properties: {
+      title: title
+    },
+    minZoom: 11.5 - ZOOM_EPSILON, // Muestra las capas de agua solo si el zoom es 11.5 o mayor
+    declutter: LABEL_DECLUTTER_GROUP
+  });
+};
 
 // Crea todas las capas del mapa (se llama al montar el componente para no compartir capas entre mapas)
 const createLayers = () => {
@@ -284,9 +327,9 @@ const createLayers = () => {
   const puntosResignificacionLayer = createPointLayer('/geojson/Puntos_Resignificacion.geojson', 'Puntos de Resignificación',
     'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
 
-  const esterosLayer = createWaterLayer('esteros', '#6dceff', 'Esteros');
-  const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos');
-  const quebradasLayer = createWaterLayer('quebradas', '#6dceff', 'Quebradas');
+  const esterosLayer = createWaterLayer('esteros', '#6dceff', 'Esteros', '13px');
+  const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos', '600 15px');
+  const quebradasLayer = createWaterLayer('quebradas', '#6dceff', 'Quebradas', '12px');
 
   const nahuelbutaLayer = new VectorLayer({
     source: new VectorSource({
@@ -297,7 +340,7 @@ const createLayers = () => {
       (feature) => feature.get('Nombre') || 'Nawelfuta', // Obtener el texto de la característica o usar un valor predeterminado
       (text) => new Style({
         text: new Text({
-          font: '90px Calibri,sans-serif', // Tamaño de la fuente
+          font: `90px ${LABEL_FONT_FAMILY}`, // Tamaño de la fuente
           fill: new Fill({ color: 'green' }), // Color de relleno del texto
           stroke: new Stroke({
             color: 'white', // Color del borde del texto
@@ -336,7 +379,7 @@ const createLayers = () => {
       (feature) => feature.get('Name'),
       (text) => new Style({
         text: new Text({
-          font: 'bold 16px Calibri,sans-serif', // Fuente en negritas y tamaño de 16px
+          font: `bold 16px ${LABEL_FONT_FAMILY}`, // Fuente en negritas y tamaño de 16px
           fill: new Fill({ color: '#000' }), // Color del texto
           stroke: new Stroke({
             color: '#fff', // Color del borde del texto
