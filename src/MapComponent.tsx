@@ -1,5 +1,5 @@
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
-import { useEffect, useRef, useState } from 'react'; // Importa los hooks de React necesarios
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'; // Importa los hooks de React necesarios
 import { createPortal } from 'react-dom';
 import Map from 'ol/Map'; // Importa la clase Map de OpenLayers
 import View from 'ol/View'; // Importa la clase View de OpenLayers
@@ -45,7 +45,24 @@ if (!MAPBOX_TOKEN && import.meta.env.MODE !== 'test') {
 // para que cada capa siga apareciendo desde el mismo nivel de zoom que antes (zoom >= umbral)
 const ZOOM_EPSILON = 0.01;
 
-const INITIAL_ROTATION = -2; // Rotación inicial del mapa
+const INITIAL_ROTATION = -Math.PI / 2; // Rotación inicial del mapa: el este (Puelmapu) queda arriba
+const NORTH_ROTATION = 0; // Rotación con el norte arriba
+
+// Ángulo que gira el mapa con cada pulsación de las flechas sobre la brújula
+const COMPASS_KEY_STEP = Math.PI / 12; // 15°
+// Giro mínimo del puntero para que se considere un arrastre y no un clic
+const COMPASS_DRAG_THRESHOLD = Math.PI / 90; // 2°
+const COMPASS_ANIMATION_MS = 400;
+
+// Lleva un ángulo al rango (-π, π], para comparar rotaciones y girar por el camino más corto
+const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
+
+// Ángulo del puntero respecto al centro de un elemento, en sentido horario desde arriba
+// (el mismo sentido que la rotación de OpenLayers)
+const pointerAngle = (element: HTMLElement, clientX: number, clientY: number) => {
+  const rect = element.getBoundingClientRect();
+  return Math.atan2(clientX - (rect.left + rect.width / 2), (rect.top + rect.height / 2) - clientY);
+};
 
 // Las capas con etiquetas se depuran juntas: si dos etiquetas chocan, solo se dibuja la de la capa
 // más arriba en la leyenda (o la primera dentro de la misma capa)
@@ -358,6 +375,10 @@ const createLayers = () => {
 const MapComponent = () => {
   const mapRef = useRef<Map | null>(null); // Referencia al mapa
   const compassRef = useRef<HTMLButtonElement>(null); // Referencia a la brújula
+  // Arrastre en curso sobre la brújula: último ángulo del puntero y si ya giró el mapa
+  const compassDragRef = useRef<{ pointerId: number; lastAngle: number; dragged: boolean } | null>(null);
+  const suppressCompassClickRef = useRef(false); // Evita que soltar tras arrastrar cuente como clic
+  const compassKeyTargetRef = useRef(INITIAL_ROTATION); // Rotación a la que va el giro con las flechas
   const popupOverlayRef = useRef<Overlay | null>(null); // Referencia al overlay del popup
   const [popupElement] = useState(() => {
     const element = document.createElement('div'); // Contenedor que OpenLayers posiciona sobre el mapa
@@ -515,7 +536,7 @@ const MapComponent = () => {
         },
         {
           element: document.querySelector('.compass'),
-          intro: "Esta es la brújula. Te muestra la orientación actual del mapa. Haz clic en ella para restablecer la orientación.",
+          intro: "Esta es la brújula. Puelmapu (el este) queda arriba al iniciar. Arrástrala para girar el mapa y haz clic en ella para alternar entre el este y el norte arriba.",
           position: 'right'
         },
         {
@@ -581,13 +602,89 @@ const MapComponent = () => {
 
   const handleClosePopup = () => setSelectedFeature(null);
 
-  // Al hacer clic en la brújula, alterna entre la rotación inicial y el norte arriba
-  const handleCompassClick = () => {
-    if (!mapRef.current) {
+  // Gira el mapa hasta una rotación con animación, por el camino más corto
+  const animateRotation = (target: number, duration = COMPASS_ANIMATION_MS) => {
+    const view = mapRef.current?.getView();
+    if (!view) {
       return;
     }
-    const view = mapRef.current.getView();
-    view.setRotation(view.getRotation() !== INITIAL_ROTATION ? INITIAL_ROTATION : 0);
+    view.cancelAnimations();
+    const rotation = view.getRotation();
+    view.animate({ rotation: rotation + normalizeAngle(target - rotation), duration });
+  };
+
+  // Al hacer clic en la brújula, alterna entre el este arriba (rotación inicial) y el norte arriba
+  const handleCompassClick = () => {
+    if (suppressCompassClickRef.current) {
+      suppressCompassClickRef.current = false;
+      return;
+    }
+    const view = mapRef.current?.getView();
+    if (!view) {
+      return;
+    }
+    const isEastUp = Math.abs(normalizeAngle(view.getRotation() - INITIAL_ROTATION)) < 0.01;
+    animateRotation(isEastUp ? NORTH_ROTATION : INITIAL_ROTATION);
+  };
+
+  // Arrastrar la brújula gira el mapa siguiendo al puntero
+  const handleCompassPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+    event.currentTarget.setPointerCapture(event.pointerId); // Sigue recibiendo el movimiento fuera de la brújula
+    mapRef.current?.getView().cancelAnimations();
+    compassDragRef.current = {
+      pointerId: event.pointerId,
+      lastAngle: pointerAngle(event.currentTarget, event.clientX, event.clientY),
+      dragged: false
+    };
+  };
+
+  const handleCompassPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = compassDragRef.current;
+    const view = mapRef.current?.getView();
+    if (!drag || drag.pointerId !== event.pointerId || !view) {
+      return;
+    }
+    const angle = pointerAngle(event.currentTarget, event.clientX, event.clientY);
+    // Se acumula el giro paso a paso para no saltar al cruzar los ±180°
+    const delta = normalizeAngle(angle - drag.lastAngle);
+    if (!drag.dragged && Math.abs(delta) < COMPASS_DRAG_THRESHOLD) {
+      return;
+    }
+    drag.dragged = true;
+    drag.lastAngle = angle;
+    view.setRotation(view.getRotation() + delta);
+  };
+
+  const handleCompassPointerUp = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const drag = compassDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+    suppressCompassClickRef.current = drag.dragged;
+    compassDragRef.current = null;
+  };
+
+  // Con el teclado: las flechas giran el mapa e Inicio vuelve al este arriba
+  const handleCompassKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+    const view = mapRef.current?.getView();
+    if (!view) {
+      return;
+    }
+    const steps: Record<string, number> = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 };
+    if (event.key in steps) {
+      event.preventDefault();
+      // Parte de la rotación final de una animación en curso, para que pulsar seguido acumule el giro
+      const target = (view.getAnimating() ? compassKeyTargetRef.current : view.getRotation()) + steps[event.key] * COMPASS_KEY_STEP;
+      compassKeyTargetRef.current = target;
+      view.cancelAnimations();
+      view.animate({ rotation: target, duration: 150 });
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      animateRotation(INITIAL_ROTATION);
+    }
   };
 
   return (
@@ -599,8 +696,13 @@ const MapComponent = () => {
         className="compass"
         ref={compassRef}
         onClick={handleCompassClick}
-        aria-label="Brújula: restablecer la orientación del mapa"
-        title="Restablecer orientación"
+        onPointerDown={handleCompassPointerDown}
+        onPointerMove={handleCompassPointerMove}
+        onPointerUp={handleCompassPointerUp}
+        onPointerCancel={handleCompassPointerUp}
+        onKeyDown={handleCompassKeyDown}
+        aria-label="Brújula: arrastra o usa las flechas para girar el mapa; pulsa para alternar entre el este y el norte arriba"
+        title="Arrastra para girar el mapa · clic: este / norte arriba"
       ></button>
       <div className="griut-logo">
         <img src="logo01.png" alt="Logo GRIUT" />

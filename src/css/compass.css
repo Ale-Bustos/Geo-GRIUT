@@ -9,11 +9,17 @@
     background-color: transparent; /* Quita los estilos por defecto del botón */
     border: none;
     padding: 0;
-    cursor: pointer;
+    cursor: grab;
+    touch-action: none; /* En pantallas táctiles, arrastrar gira el mapa en vez de desplazar la página */
+    user-select: none;
     transform-origin: center center;
     z-index: 1000;
   }
   
+  .compass:active {
+    cursor: grabbing;
+  }
+
   /* Anillo de foco redondo para la navegación con teclado */
   .compass:focus-visible {
     outline: 3px solid #1a73e8;
