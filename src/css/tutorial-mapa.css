@@ -1,0 +1,142 @@
+/* TutorialMapa — paleta inspirada en el textil mapuche (trarikan makuñ):
+   kelü (rojo), kurü (negro), lig (blanco) y kallfü (azul). */
+.tu {
+  --tu-kelu: #8B1E1E;
+  --tu-kelu-oscuro: #6E1616;
+  --tu-kuru: #1C1917;
+  --tu-lig: #FAF7F2;
+  --tu-kallfu: #2B3A8C;
+  --tu-texto: #292524;
+  --tu-secundario: #78716C;
+  --tu-fuente: "Segoe UI", Inter, "Source Sans 3", system-ui, -apple-system, sans-serif;
+  /* Banda de ñimin: rombo escalonado negro sobre rojo, centro blanco */
+  --tu-nimin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12' shape-rendering='crispEdges'%3E%3Crect width='24' height='12' fill='%238B1E1E'/%3E%3Cpath d='M11 0h2v2h2v2h2v4h-2v2h-2v2h-2v-2h-2v-2h-2v-4h2v-2h2z' fill='%231C1917'/%3E%3Crect x='11' y='5' width='2' height='2' fill='%23FAF7F2'/%3E%3Crect x='0' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3Crect x='23' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3C/svg%3E");
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  font-family: var(--tu-fuente);
+  color: var(--tu-texto);
+}
+.tu[hidden], .tu [hidden] { display: none !important; }
+.tu *, .tu *::before, .tu *::after { box-sizing: border-box; }
+.tu button { font: inherit; cursor: pointer; }
+.tu button:focus-visible { outline: 2px solid var(--tu-kallfu); outline-offset: 2px; }
+
+/* Velo y marco del elemento destacado */
+.tu-velo { position: absolute; inset: 0; background: rgba(28, 25, 23, 0.45); }
+.tu-marco { display: none; position: absolute; pointer-events: none; border-radius: 16px; transition: all 0.25s ease; }
+.tu-con-objetivo .tu-velo { background: transparent; }
+.tu-con-objetivo .tu-marco {
+  display: block;
+  box-shadow: 0 0 0 3px var(--tu-lig), 0 0 0 5px var(--tu-kelu), 0 0 0 9999px rgba(28, 25, 23, 0.45);
+}
+
+/* Tarjeta */
+.tu-tarjeta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  background: var(--tu-lig);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(28, 25, 23, 0.3);
+}
+.tu-con-objetivo .tu-tarjeta { transform: none; }
+
+.tu-banda {
+  height: 20px;
+  background: var(--tu-nimin) repeat-x center / 40px 20px;
+  border-bottom: 2px solid var(--tu-kuru);
+}
+
+.tu-cuerpo { padding: 16px 22px 20px; }
+.tu-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tu-contador {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tu-kallfu);
+}
+.tu-saltar {
+  padding: 4px 6px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 13px;
+  color: var(--tu-secundario);
+}
+.tu-saltar:hover { color: var(--tu-kuru); text-decoration: underline; }
+
+.tu-contenido { padding-top: 12px; }
+.tu-entra { animation: tu-entra 0.25s ease both; }
+@keyframes tu-entra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.tu-icono { display: block; width: 44px; height: 44px; object-fit: contain; margin-bottom: 10px; }
+.tu-saludo {
+  margin: 0 0 2px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-size: 16px;
+  color: var(--tu-kelu);
+}
+.tu-titulo { margin: 0 0 8px; font-size: 20px; line-height: 1.25; font-weight: 700; color: var(--tu-kuru); }
+.tu-texto { font-size: 14.5px; line-height: 1.55; }
+.tu-texto p { margin: 0 0 8px; }
+.tu-texto i[lang="arn"], .tu-texto .arn { font-style: normal; font-weight: 600; color: var(--tu-kallfu); }
+.tu-texto strong { color: var(--tu-kelu); }
+
+/* Avance: rombos */
+.tu-pie { margin-top: 16px; }
+.tu-progreso { display: flex; justify-content: center; gap: 10px; padding: 4px 0 2px; }
+.tu-rombo {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 1.5px solid var(--tu-kuru);
+  background: transparent;
+  transform: rotate(45deg);
+  transition: background 0.2s, transform 0.2s;
+}
+.tu-rombo.tu-hecho { background: var(--tu-kuru); }
+.tu-rombo.tu-actual { background: var(--tu-kelu); border-color: var(--tu-kelu); transform: rotate(45deg) scale(1.3); }
+
+.tu-acciones { display: flex; gap: 10px; margin-top: 16px; }
+.tu-boton { padding: 10px 18px; border-radius: 10px; font-size: 14px; }
+.tu-anterior { border: 1px solid #D6D3D1; background: transparent; color: var(--tu-texto); }
+.tu-anterior:hover { background: #F0ECE6; }
+.tu-siguiente {
+  margin-left: auto;
+  border: 0;
+  background: var(--tu-kelu);
+  color: var(--tu-lig);
+  font-weight: 600;
+}
+.tu-siguiente:hover { background: var(--tu-kelu-oscuro); }
+
+/* Celular: tarjeta abajo */
+@media (max-width: 640px) {
+  .tu-tarjeta, .tu-con-objetivo .tu-tarjeta {
+    left: 12px !important;
+    right: 12px !important;
+    top: auto !important;
+    bottom: 12px !important;
+    width: auto;
+    transform: none;
+    max-height: 70vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tu-entra { animation: none; }
+  .tu-marco, .tu-rombo { transition: none; }
+}
+
+/* ---------- Ajustes para Geo-GRIUT ---------- */
+/* Por encima de los controles del mapa (z-index 1100), el logo y la brújula (1000) */
+.tu { z-index: 2000; }

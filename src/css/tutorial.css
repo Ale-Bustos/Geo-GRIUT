@@ -1,9 +1,0 @@
-/* intro.js reserva 45px para el botón de salir (pensado para "×"); se ajusta al texto "Saltar" */
-.introjs-skipbutton {
-  width: auto;
-  height: auto;
-  padding: 10px 14px;
-  line-height: 1;
-  font-size: 14px;
-  font-weight: 600;
-}
