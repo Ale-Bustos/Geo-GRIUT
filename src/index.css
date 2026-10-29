@@ -1,3 +1,17 @@
+/* La página es solo el mapa: sin scroll ni rebote, para que los gestos muevan el mapa */
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* dvh es la altura visible real: en Android, 100vh incluye el espacio que tapa la barra
+   del navegador y deja la parte de abajo del mapa (la barra de capas) fuera de la pantalla */
+#map {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

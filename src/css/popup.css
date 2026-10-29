@@ -45,6 +45,7 @@
   min-width: 240px;
   max-width: min(340px, calc(100vw - 32px));
   max-height: 55vh;
+  max-height: 55dvh;
   display: flex;
   flex-direction: column;
   background: var(--pp-lig);
