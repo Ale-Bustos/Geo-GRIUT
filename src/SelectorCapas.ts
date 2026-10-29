@@ -260,7 +260,8 @@ export default class SelectorCapas extends Control {
     const fila = crear('div', 'sc-fila');
     const linea = crear('div', 'sc-linea');
     linea.appendChild(simbolo(def.simbolo));
-    linea.appendChild(crear('span', 'sc-nombre', { id: idNombre, texto: def.nombre }));
+    const nombre = crear('span', 'sc-nombre', { id: idNombre, texto: def.nombre });
+    linea.appendChild(nombre);
 
     const interruptor = crear('button', 'sc-switch', { type: 'button', role: 'switch', 'aria-checked': 'false', 'aria-labelledby': idNombre });
     const registro: Fila = { capa, fila, interruptor };
@@ -303,8 +304,15 @@ export default class SelectorCapas extends Control {
       fila.appendChild(linea);
     }
 
-    if (capa) interruptor.addEventListener('click', () => capa.setVisible(!capa.getVisible()));
-    else interruptor.disabled = true;
+    if (capa) {
+      interruptor.addEventListener('click', () => capa.setVisible(!capa.getVisible()));
+      // El nombre funciona como la etiqueta del interruptor: tocarlo también enciende o apaga la capa,
+      // así la zona táctil abarca casi toda la fila
+      nombre.addEventListener('click', () => interruptor.click());
+      nombre.classList.add('sc-nombre-activo');
+    } else {
+      interruptor.disabled = true;
+    }
     linea.appendChild(interruptor);
     this._filas.push(registro);
     return fila;

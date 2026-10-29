@@ -180,3 +180,20 @@
 @media (prefers-reduced-motion: reduce) {
   .feature-popup { animation: none; }
 }
+
+/* Celular: popup compacto, como mucho el 45% del alto, para que no tape el mapa ni el menú */
+@media (max-width: 640px) {
+  .feature-popup {
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    max-height: 45vh;
+    max-height: 45dvh;
+  }
+  .feature-popup-banda { height: 10px; background-size: 20px 10px; }
+  .ol-popup-closer { top: 14px; right: 6px; width: 36px; height: 36px; }
+  .feature-popup-cuerpo { padding: 8px 14px 12px; }
+  .feature-popup-category { margin-right: 36px; font-size: 10.5px; }
+  .feature-popup-title { margin: 0 36px 6px 0; font-size: 16px; }
+  .feature-popup dl > div { padding: 5px 0; }
+  .feature-popup dd { font-size: 13.5px; }
+}
