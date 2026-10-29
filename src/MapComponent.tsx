@@ -1,5 +1,4 @@
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
-import 'ol-ext/dist/ol-ext.css'; // Importa los estilos adicionales de ol-ext
 import { useEffect, useRef, useState } from 'react'; // Importa los hooks de React necesarios
 import { createPortal } from 'react-dom';
 import Map from 'ol/Map'; // Importa la clase Map de OpenLayers
@@ -19,10 +18,11 @@ import Point from 'ol/geom/Point';
 import type BaseLayer from 'ol/layer/Base';
 import type { FeatureLike } from 'ol/Feature';
 import type { Coordinate } from 'ol/coordinate';
-import LayerSwitcher from 'ol-ext/control/LayerSwitcher'; // Importa el control de capas de ol-ext
+import SelectorCapas, { ANCHO_MOVIL } from './SelectorCapas'; // Selector de capas con leyenda
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import './css/logo.css'; // Importa los estilos del logo de GRIUT
 import './css/popup.css'; // Importa los estilos del popup de los puntos
+import './css/selector-capas.css'; // Estilos del selector de capas
 import 'intro.js/introjs.css';
 import './css/tutorial.css'; // Ajustes de estilo del tutorial
 import introJs from 'intro.js'; // Importa introJs como exportación por defecto
@@ -53,6 +53,15 @@ const LABEL_DECLUTTER_GROUP = 'etiquetas';
 
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
+
+// Busca una capa por su título, también dentro de los grupos
+const findLayer = (map: Map, title: string) => {
+  const layer = map.getAllLayers().find((candidate) => candidate.get('title') === title) ?? null;
+  if (!layer) {
+    console.warn('No se encontró la capa con título "' + title + '"');
+  }
+  return layer;
+};
 
 // Solo las capas con categoría de popup responden a los clics
 const isPopupLayer = (layer: BaseLayer) => Boolean(layer.get('popupCategory'));
@@ -374,19 +383,58 @@ const MapComponent = () => {
     });
     mapRef.current = map;
 
-    // Añadir el control de capas (LayerSwitcher)
-    const layerSwitcher = new LayerSwitcher({
-      activationMode: 'click', // Modo de activación por clic
-      startActive: false, // No empieza activo
-      tipLabel: 'Leyenda', // Etiqueta del botón de la leyenda
-      groupSelectStyle: 'none', // Estilo de selección de grupo sin controles de opacidad
-      collapseTipLabel: 'Ocultar leyenda' // Etiqueta del botón para ocultar la leyenda
-    });
-    layerSwitcher.element.id = 'layer-switcher'; // Añade un id al control de capas
-    layerSwitcher.element.style.right = '10px'; // Ajusta la posición del control de capas
-    layerSwitcher.element.style.top = '50%'; // Ajusta la posición del control de capas
-    layerSwitcher.element.style.transform = 'translateY(-50%)'; // Centra verticalmente el control de capas
-    map.addControl(layerSwitcher); // Añade el control de capas al mapa
+    // Selector de capas con su leyenda; los símbolos reproducen cómo se dibuja cada capa
+    map.addControl(new SelectorCapas({
+      titulo: 'Capas',
+      grupos: [
+        {
+          titulo: 'Territorio',
+          capas: [
+            { capa: findLayer(map, 'Toponimia'), nombre: 'Toponimia', simbolo: { tipo: 'texto', color: '#000' } },
+            { capa: findLayer(map, 'Límite Provincial'), nombre: 'Límite provincial', simbolo: { tipo: 'linea', color: '#8B4513', ancho: 1.5, guiones: '3 2' } },
+            { capa: findLayer(map, 'Nahuelbuta'), nombre: 'Nahuelbuta', simbolo: { tipo: 'texto', color: 'green' } }
+          ]
+        },
+        {
+          titulo: 'Hidrografía',
+          capas: [
+            { capa: findLayer(map, 'Ríos'), nombre: 'Ríos', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
+            { capa: findLayer(map, 'Esteros'), nombre: 'Esteros', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
+            { capa: findLayer(map, 'Quebradas'), nombre: 'Quebradas', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } }
+          ]
+        },
+        {
+          titulo: 'Puntos de interés',
+          chips: 'capas', // En celular, un chip por capa en vez de uno por grupo
+          capas: [
+            {
+              capa: findLayer(map, 'Puntos de Resignificación'),
+              nombre: 'Puntos de resignificación', nombreCorto: 'Resignificación',
+              simbolo: { tipo: 'icono', src: '/simbologia/rewe.png' },
+              leyenda: [
+                { icono: '/simbologia/rewe.png', texto: 'Rewe' },
+                { simbolo: { tipo: 'punto', color: 'purple' }, texto: 'Otra resignificación' }
+              ]
+            },
+            {
+              capa: findLayer(map, 'Puntos Historicos'),
+              nombre: 'Puntos históricos', nombreCorto: 'Históricos',
+              simbolo: { tipo: 'icono', src: '/simbologia/relevancia_historica.png' },
+              leyenda: [
+                { icono: '/simbologia/batalla.png', texto: 'Batalla' },
+                { icono: '/simbologia/relevancia_historica.png', texto: 'Relevancia histórica' },
+                { icono: '/simbologia/sitio_arqueologico.png', texto: 'Sitio arqueológico / conchal' }
+              ]
+            },
+            {
+              capa: findLayer(map, 'Conflictos Socio-Ambientales'),
+              nombre: 'Conflictos socioambientales', nombreCorto: 'Conflictos',
+              simbolo: { tipo: 'punto', color: 'red' }
+            }
+          ]
+        }
+      ]
+    }));
 
     // Popup con la información de los puntos
     const popupOverlay = new Overlay({
@@ -471,7 +519,8 @@ const MapComponent = () => {
           position: 'right'
         },
         {
-          element: document.querySelector('#layer-switcher'),
+          // En celular el panel está oculto y se abre desde el botón flotante
+          element: document.querySelector(window.innerWidth <= ANCHO_MOVIL ? '.sc-fab' : '.sc-panel'),
           intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa. Haz clic en un punto de conflicto, histórico o de resignificación para ver su información.",
           position: 'left'
         },
