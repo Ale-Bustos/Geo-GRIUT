@@ -13,7 +13,8 @@ import { defaults as defaultControls, ScaleLine } from 'ol/control'; // Importa 
 import VectorLayer from 'ol/layer/Vector'; // Importa la clase VectorLayer de OpenLayers
 import VectorSource from 'ol/source/Vector'; // Importa la clase VectorSource de OpenLayers
 import GeoJSON from 'ol/format/GeoJSON'; // Importa el formato GeoJSON de OpenLayers
-import { Style, Fill, Stroke, Circle as CircleStyle, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
+import { Style, Fill, Stroke, Circle as CircleStyle, Icon, Text } from 'ol/style'; // Importa las clases de estilos de OpenLayers
+import type ImageStyle from 'ol/style/Image';
 import Point from 'ol/geom/Point';
 import type BaseLayer from 'ol/layer/Base';
 import type { FeatureLike } from 'ol/Feature';
@@ -72,6 +73,25 @@ const createCachedStyleFunction = (
   };
 };
 
+// Texto de la etiqueta de un elemento, según la columna que traiga su capa
+const getLabel = (feature: FeatureLike): string | undefined =>
+  feature.get('Nombre') || feature.get('PopupInfo') || feature.get('Name');
+
+// Etiqueta de las capas GeoJSON; en los puntos va encima del símbolo (a offsetY píxeles) y no sobre él
+const createLabel = (text: string, offsetY: number) => new Text({
+  font: '16px Calibri,sans-serif',
+  fill: new Fill({ color: '#000' }),
+  stroke: new Stroke({
+    color: '#fff',
+    width: 2
+  }),
+  text: text,
+  overflow: true,
+  placement: 'line',
+  textBaseline: 'bottom',
+  offsetY: offsetY
+});
+
 // Función para crear capas GeoJSON con estilos personalizados
 const createGeoJsonLayer = (url: string, style: Style, title: string, visible = true) => new VectorLayer({
   source: new VectorSource({
@@ -79,24 +99,12 @@ const createGeoJsonLayer = (url: string, style: Style, title: string, visible = 
     format: new GeoJSON()
   }),
   style: createCachedStyleFunction(
-    (feature) => feature.get('Nombre') || feature.get('PopupInfo') || feature.get('Name'),
+    getLabel,
     (text) => new Style({
       stroke: style.getStroke() ?? undefined,
       fill: style.getFill() ?? undefined,
       image: style.getImage() ?? undefined,
-      text: new Text({
-        font: '16px Calibri,sans-serif',
-        fill: new Fill({ color: '#000' }),
-        stroke: new Stroke({
-          color: '#fff',
-          width: 2
-        }),
-        text: text,
-        overflow: true,
-        placement: 'line',
-        textBaseline: 'bottom', // En los puntos, la etiqueta va encima del símbolo y no sobre él
-        offsetY: -6
-      })
+      text: createLabel(text, -6)
     })
   ),
   properties: {
@@ -105,6 +113,73 @@ const createGeoJsonLayer = (url: string, style: Style, title: string, visible = 
   visible: visible,
   declutter: LABEL_DECLUTTER_GROUP
 });
+
+// Símbolo de un punto: su imagen y cuánto se sube la etiqueta para no taparla
+interface PointSymbol {
+  name: string;
+  image: ImageStyle;
+  labelOffsetY: number;
+}
+
+// Alto en píxeles con que se dibujan los íconos de la simbología
+const ICON_HEIGHT = 28;
+
+// Ícono de public/simbologia (PNG a 4x, para que se vea nítido en pantallas de alta densidad)
+const createIconSymbol = (name: string): PointSymbol => ({
+  name,
+  image: new Icon({
+    src: `/simbologia/${name}.png`,
+    height: ICON_HEIGHT,
+    declutterMode: 'obstacle' // El ícono siempre se dibuja; las etiquetas lo esquivan
+  }),
+  labelOffsetY: -(ICON_HEIGHT / 2 + 2)
+});
+
+// Círculo de color, para los puntos que no tienen un ícono propio
+const createCircleSymbol = (name: string, fillColor: string, strokeColor: string): PointSymbol => ({
+  name,
+  image: new CircleStyle({
+    radius: 5,
+    fill: new Fill({ color: fillColor }),
+    stroke: new Stroke({ color: strokeColor, width: 1 }),
+    declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
+  }),
+  labelOffsetY: -6
+});
+
+// Capa de puntos con popup; getSymbol elige el símbolo de cada punto
+const createPointLayer = (
+  url: string,
+  title: string,
+  popupCategory: string,
+  getSymbol: (feature: FeatureLike) => PointSymbol
+) => {
+  const cache: Record<string, Style> = {}; // Un estilo por cada combinación de símbolo y etiqueta
+  return new VectorLayer({
+    source: new VectorSource({
+      url: url,
+      format: new GeoJSON()
+    }),
+    style: (feature) => {
+      const symbol = getSymbol(feature);
+      const text = getLabel(feature) || '';
+      const key = symbol.name + '|' + text;
+      if (!cache[key]) {
+        cache[key] = new Style({
+          image: symbol.image,
+          text: createLabel(text, symbol.labelOffsetY)
+        });
+      }
+      return cache[key];
+    },
+    properties: {
+      title: title,
+      popupCategory: popupCategory // Categoría que se muestra en el popup
+    },
+    visible: false,
+    declutter: LABEL_DECLUTTER_GROUP
+  });
+};
 
 const createWaterLayer = (url: string, color: string, title: string) => new VectorLayer({
   source: new VectorSource({
@@ -140,37 +215,31 @@ const createWaterLayer = (url: string, color: string, title: string) => new Vect
 
 // Crea todas las capas del mapa (se llama al montar el componente para no compartir capas entre mapas)
 const createLayers = () => {
-  const conflictosLayer = createGeoJsonLayer('/geojson/Conflictos.geojson', new Style({
-    image: new CircleStyle({
-      radius: 5,
-      fill: new Fill({ color: 'red' }),
-      stroke: new Stroke({ color: 'white', width: 1 }),
-      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
-    })
-  }), 'Conflictos Socio-Ambientales', false);
+  const conflictoSymbol = createCircleSymbol('conflicto', 'red', 'white');
+  const batallaSymbol = createIconSymbol('batalla');
+  const sitioArqueologicoSymbol = createIconSymbol('sitio_arqueologico');
+  const relevanciaHistoricaSymbol = createIconSymbol('relevancia_historica');
+  const reweSymbol = createIconSymbol('rewe');
+  const resignificacionSymbol = createCircleSymbol('resignificacion', 'purple', 'white');
 
-  const puntosHistoricosLayer = createGeoJsonLayer('/geojson/Puntos_Historicos.geojson', new Style({
-    image: new CircleStyle({
-      radius: 5,
-      fill: new Fill({ color: 'yellow' }),
-      stroke: new Stroke({ color: 'black', width: 1 }),
-      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
-    })
-  }), 'Puntos Historicos', false);
+  const conflictosLayer = createPointLayer('/geojson/Conflictos.geojson', 'Conflictos Socio-Ambientales',
+    'Conflicto socioambiental', () => conflictoSymbol);
 
-  const puntosResignificacionLayer = createGeoJsonLayer('/geojson/Puntos_Resignificacion.geojson', new Style({
-    image: new CircleStyle({
-      radius: 5,
-      fill: new Fill({ color: 'purple' }),
-      stroke: new Stroke({ color: 'white', width: 1 }),
-      declutterMode: 'obstacle' // El punto siempre se dibuja; las etiquetas lo esquivan
-    })
-  }), 'Puntos de Resignificación', false);
+  // Los puntos históricos no traen una columna de tipo, así que el símbolo se elige por el nombre
+  const puntosHistoricosLayer = createPointLayer('/geojson/Puntos_Historicos.geojson', 'Puntos Historicos',
+    'Punto histórico', (feature) => {
+      const name = String(feature.get('Name') || '');
+      if (/batalla/i.test(name)) {
+        return batallaSymbol;
+      }
+      if (/conchal|petroglifo|chemamul/i.test(name)) {
+        return sitioArqueologicoSymbol;
+      }
+      return relevanciaHistoricaSymbol;
+    });
 
-  // Categoría que se muestra en el popup de cada capa de puntos
-  conflictosLayer.set('popupCategory', 'Conflicto socioambiental');
-  puntosHistoricosLayer.set('popupCategory', 'Punto histórico');
-  puntosResignificacionLayer.set('popupCategory', 'Resignificación cultural');
+  const puntosResignificacionLayer = createPointLayer('/geojson/Puntos_Resignificacion.geojson', 'Puntos de Resignificación',
+    'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
 
   const esterosLayer = createWaterLayer('/geojson/Esteros.geojson', '#6dceff', 'Esteros');
   const riosLayer = createWaterLayer('/geojson/Rios.geojson', '#6dceff', 'Ríos');
