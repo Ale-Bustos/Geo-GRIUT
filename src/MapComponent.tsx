@@ -64,6 +64,11 @@ const COMPASS_ANIMATION_MS = 400;
 // vuelve a la densidad de la pantalla para que se vea nítido
 const MOVING_PIXEL_RATIO = 1;
 
+// Las capas de puntos y nombres se redibujan también mientras el mapa se mueve. Si reutilizan el
+// dibujo anterior, quedan con la densidad de la pantalla y, al bajar la densidad, los íconos y
+// etiquetas se ven agrandados (3 veces en un celular de densidad 3). Son pocos elementos: es barato
+const REDRAW_WHILE_MOVING = { updateWhileAnimating: true, updateWhileInteracting: true };
+
 // Lleva un ángulo al rango (-π, π], para comparar rotaciones y girar por el camino más corto
 const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
@@ -229,7 +234,8 @@ const createPointLayer = (
       popupCategory: popupCategory // Categoría que se muestra en el popup
     },
     visible: false,
-    declutter: LABEL_DECLUTTER_GROUP
+    declutter: LABEL_DECLUTTER_GROUP,
+    ...REDRAW_WHILE_MOVING
   });
 };
 
@@ -359,7 +365,8 @@ const createLayers = () => {
     properties: {
       title: 'Nahuelbuta'
     },
-    minZoom: 11 - ZOOM_EPSILON // Muestra la capa de Nahuelbuta si el zoom es 11 o mayor
+    minZoom: 11 - ZOOM_EPSILON, // Muestra la capa de Nahuelbuta si el zoom es 11 o mayor
+    ...REDRAW_WHILE_MOVING
   });
 
   const provConceLayer = createGeoServerLayer('prov_conce', new Style({
@@ -397,7 +404,8 @@ const createLayers = () => {
       title: 'Toponimia'
     },
     minZoom: 10.5 - ZOOM_EPSILON, // Muestra la capa de Toponimia si el zoom es 10.5 o mayor
-    declutter: LABEL_DECLUTTER_GROUP
+    declutter: LABEL_DECLUTTER_GROUP,
+    ...REDRAW_WHILE_MOVING
   });
 
   return [
