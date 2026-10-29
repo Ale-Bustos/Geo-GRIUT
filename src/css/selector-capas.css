@@ -44,8 +44,7 @@
   overflow: hidden;
 }
 /* Banda de ñimin arriba de la tarjeta, como en el tutorial y el popup */
-.sc-panel::before,
-.sc-popover::before {
+.sc-panel::before {
   content: "";
   flex: none;
   display: block;
@@ -160,7 +159,7 @@
 .sc-segmento[aria-checked="true"] { background: #fff; border-color: var(--sc-acento); color: var(--sc-acento); font-weight: 600; }
 
 /* ---------- Celular ---------- */
-.sc-fab, .sc-popover, .sc-chips { display: none; }
+.sc-fab, .sc-chips { display: none; }
 
 @media (max-width: 640px) {
   .sc-panel { display: none; }
@@ -168,29 +167,34 @@
   .sc-cerrar { display: inline-grid; }
   .sc-minimizado .sc-cuerpo { display: block; }
 
-  /* Lista completa como hoja inferior */
+  /* El botón de capas abre directo una ventana compacta bajo él, con la simbología a la vista */
   .sc-hoja-abierta .sc-panel {
     display: flex;
-    top: auto;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: auto;
-    max-height: calc(100% - var(--sc-tope) - 52px);
-    border-radius: 16px 16px 0 0;
+    top: calc(var(--sc-tope) + 52px);
+    right: 0.75em;
+    width: min(248px, calc(100% - 1.5em));
+    max-height: calc(100% - var(--sc-tope) - 52px - 0.75em - env(safe-area-inset-bottom, 0px));
+    border-radius: 12px;
     z-index: 2;
   }
-  .sc-hoja-abierta .sc-cuerpo { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
-  /* Lista compacta para que las 9 capas quepan sin desplazarse en pantallas de ~640px de alto;
-     tocar el nombre también enciende la capa, así que la zona táctil sigue siendo amplia */
   .sc-panel::before { height: 10px; background-size: 20px 10px; }
-  .sc-cabecera { padding: 8px 8px 8px 18px; }
-  .sc-titulo { font-size: 16px; }
-  .sc-grupo { padding: 6px 10px 0 18px; }
+  .sc-cabecera { padding: 4px 4px 4px 14px; }
+  .sc-titulo { font-size: 15px; }
+  .sc-boton { width: 32px; height: 32px; }
+  .sc-cuerpo { padding-bottom: 6px; }
+  .sc-grupo { padding: 4px 10px 0 14px; }
   .sc-grupo-titulo { margin-bottom: 0; }
-  .sc-linea { min-height: 38px; }
-  .sc-nombre { font-size: 14px; }
-  .sc-boton { width: 36px; height: 36px; }
+  .sc-linea { min-height: 30px; gap: 8px; }
+  /* Nombres largos pasan a dos líneas en vez de cortarse */
+  .sc-nombre { font-size: 13px; white-space: normal; line-height: 1.2; }
+  /* Sin desplegables: la leyenda se ve siempre y la opacidad queda para escritorio */
+  .sc-mas, .sc-opacidad { display: none; }
+  .sc-detalle { display: none !important; }
+  .sc .sc-detalle.sc-con-leyenda { display: block !important; padding: 0 0 4px 30px; }
+  .sc-leyenda { margin: 0; padding: 3px 8px; }
+  .sc-leyenda li { min-height: 18px; font-size: 11.5px; line-height: 1.15; }
+  .sc-apagada .sc-leyenda { opacity: 0.6; }
+  .sc-segmento { padding: 8px 4px; }
 
   .sc-fab {
     pointer-events: auto;
@@ -208,46 +212,7 @@
     color: var(--sc-acento);
     box-shadow: var(--sc-sombra);
   }
-  .sc-popover {
-    pointer-events: auto;
-    position: absolute;
-    top: calc(0.75em + 52px);
-    right: 0.75em;
-    display: block;
-    width: 232px;
-    padding: 0 14px 10px;
-    overflow: hidden;
-    border-radius: 12px;
-    background: var(--sc-fondo);
-    box-shadow: var(--sc-sombra);
-  }
-  .sc-popover::before { margin: 0 -14px 10px; }
-  .sc-pop-titulo { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
-  .sc-minis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .sc-mini { display: grid; gap: 4px; padding: 0; border: 0; background: none; font-size: 11px; color: var(--sc-secundario); }
-  .sc-mini-img {
-    display: block;
-    aspect-ratio: 1;
-    border-radius: 8px;
-    border: 1px solid var(--sc-linea);
-    background-size: cover;
-    background-position: center;
-  }
-  .sc-mini[aria-checked="true"] { color: var(--sc-acento); font-weight: 600; }
-  .sc-mini[aria-checked="true"] .sc-mini-img { border: 2px solid var(--sc-acento); }
-  .sc-todas {
-    width: 100%;
-    margin-top: 10px;
-    padding: 8px;
-    border: 0;
-    border-top: 1px solid var(--sc-linea);
-    background: none;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--sc-acento);
-  }
-  /* Sin selector de mapa base, el botón va solo y no necesita separador */
-  .sc-todas:first-child { margin-top: 0; border-top: 0; }
+  .sc-fab[aria-expanded="true"] { background: var(--sc-acento); color: #fff; }
 
   .sc-chips {
     pointer-events: auto;
@@ -298,5 +263,5 @@
 .sc-panel { top: var(--sc-tope); max-height: calc(100% - var(--sc-tope) - 2.5em); }
 @media (max-width: 640px) {
   .sc-fab { top: var(--sc-tope); }
-  .sc-popover { top: calc(var(--sc-tope) + 52px); }
+  .sc-hoja-abierta .sc-panel { top: calc(var(--sc-tope) + 52px); max-height: calc(100% - var(--sc-tope) - 52px - 0.75em - env(safe-area-inset-bottom, 0px)); }
 }
