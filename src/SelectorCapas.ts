@@ -3,8 +3,8 @@
  *
  * Escritorio: tarjeta con capas agrupadas, interruptores, símbolo de cada capa,
  *             opacidad y leyenda desplegables, y selector de mapa base.
- * Celular (≤ 640 px): chips de capas sobre el mapa + botón flotante con el mapa base
- *             y acceso a la lista completa como hoja inferior.
+ * Celular (≤ 640 px): chips de capas sobre el mapa + botón flotante que abre una ventana
+ *             compacta con todas las capas, su simbología a la vista y el mapa base.
  */
 import Control from 'ol/control/Control';
 import { unByKey } from 'ol/Observable';
@@ -139,8 +139,6 @@ export default class SelectorCapas extends Control {
   private _contador!: HTMLElement;
   private _botonMin!: HTMLButtonElement;
   private _fab!: HTMLButtonElement;
-  private _pop!: HTMLDivElement;
-  private _alPulsarFuera?: (e: PointerEvent) => void;
 
   constructor(opciones: OpcionesSelectorCapas) {
     const elemento = crear('div', 'sc ol-unselectable');
@@ -173,7 +171,6 @@ export default class SelectorCapas extends Control {
     this._botonMin = crear('button', 'sc-boton sc-minimizar', { type: 'button', 'aria-expanded': 'true', title: 'Minimizar', html: ICONOS.minimizar });
     this._botonMin.addEventListener('click', () => this._minimizar(!panel.classList.contains('sc-minimizado'), true));
     const botonCerrar = crear('button', 'sc-boton sc-cerrar', { type: 'button', title: 'Cerrar', 'aria-label': 'Cerrar', html: ICONOS.cerrar });
-    botonCerrar.addEventListener('click', () => raiz.classList.remove('sc-hoja-abierta'));
     cabecera.appendChild(this._botonMin);
     cabecera.appendChild(botonCerrar);
     panel.appendChild(cabecera);
@@ -203,34 +200,10 @@ export default class SelectorCapas extends Control {
     panel.appendChild(cuerpo);
     raiz.appendChild(panel);
 
-    // Celular: botón flotante + ventana de mapa base
-    const fab = (this._fab = crear('button', 'sc-fab', { type: 'button', 'aria-label': 'Capas y mapa base', 'aria-expanded': 'false', html: ICONOS.capas }));
-    const pop = (this._pop = crear('div', 'sc-popover'));
-    pop.hidden = true;
-    if (this.mapasBase.length) {
-      pop.appendChild(crear('h3', 'sc-pop-titulo', { texto: 'Mapa base' }));
-      const minis = crear('div', 'sc-minis', { role: 'radiogroup', 'aria-label': 'Mapa base' });
-      this.mapasBase.forEach((mb) => {
-        const b = crear('button', 'sc-mini', { type: 'button', role: 'radio', 'aria-checked': 'false' });
-        const img = crear('span', 'sc-mini-img');
-        const m = mb.miniatura || '#D9D5CC';
-        if (/^(#|rgb|hsl)/.test(m)) img.style.backgroundColor = m;
-        else img.style.backgroundImage = 'url("' + m.replace(/"/g, '%22') + '")';
-        b.appendChild(img);
-        b.appendChild(crear('span', 'sc-mini-nombre', { texto: mb.nombre }));
-        b.addEventListener('click', () => this.elegirMapaBase(mb));
-        this._botonesBase.push({ mb, b });
-        minis.appendChild(b);
-      });
-      pop.appendChild(minis);
-    }
-    const todas = crear('button', 'sc-todas', { type: 'button', texto: 'Ver todas las capas' });
-    todas.addEventListener('click', () => {
-      this._cerrarPopover();
-      raiz.classList.add('sc-hoja-abierta');
-    });
-    pop.appendChild(todas);
-    fab.addEventListener('click', () => (pop.hidden ? this._abrirPopover() : this._cerrarPopover()));
+    // Celular: botón flotante que abre directo la lista de capas con su simbología
+    const fab = (this._fab = crear('button', 'sc-fab', { type: 'button', 'aria-label': 'Capas y simbología', 'aria-expanded': 'false', html: ICONOS.capas }));
+    fab.addEventListener('click', () => this._abrirLista(!raiz.classList.contains('sc-hoja-abierta')));
+    botonCerrar.addEventListener('click', () => this._abrirLista(false));
 
     // Celular: chips
     const barra = crear('div', 'sc-chips', { role: 'toolbar', 'aria-label': 'Capas' });
@@ -245,7 +218,6 @@ export default class SelectorCapas extends Control {
     });
 
     raiz.appendChild(fab);
-    raiz.appendChild(pop);
     raiz.appendChild(barra);
 
     try {
@@ -291,6 +263,7 @@ export default class SelectorCapas extends Control {
           lista.appendChild(li);
         });
         detalle.appendChild(lista);
+        detalle.classList.add('sc-con-leyenda'); // En celular la leyenda queda siempre a la vista
       }
       mas.addEventListener('click', () => {
         const abrir = detalle.hidden;
@@ -333,7 +306,6 @@ export default class SelectorCapas extends Control {
   setMap(map: Map | null) {
     unByKey(this._claves);
     this._claves = [];
-    if (this._alPulsarFuera) document.removeEventListener('pointerdown', this._alPulsarFuera, true);
     super.setMap(map);
     if (!map) return;
 
@@ -351,11 +323,6 @@ export default class SelectorCapas extends Control {
       this.elegirMapaBase(visible || this.mapasBase[0]);
     }
 
-    this._alPulsarFuera = (e) => {
-      const objetivo = e.target as Node;
-      if (!this._pop.hidden && !this._pop.contains(objetivo) && !this._fab.contains(objetivo)) this._cerrarPopover();
-    };
-    document.addEventListener('pointerdown', this._alPulsarFuera, true);
     this.actualizar();
   }
 
@@ -401,13 +368,8 @@ export default class SelectorCapas extends Control {
     }
   }
 
-  private _abrirPopover() {
-    this._pop.hidden = false;
-    this._fab.setAttribute('aria-expanded', 'true');
-  }
-
-  private _cerrarPopover() {
-    this._pop.hidden = true;
-    this._fab.setAttribute('aria-expanded', 'false');
+  private _abrirLista(si: boolean) {
+    (this.element as HTMLElement).classList.toggle('sc-hoja-abierta', si);
+    this._fab.setAttribute('aria-expanded', String(si));
   }
 }

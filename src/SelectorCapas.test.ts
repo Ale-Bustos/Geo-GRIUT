@@ -40,3 +40,17 @@ test('tocar el nombre de la capa también la muestra y oculta', () => {
   nombre?.click();
   expect(capa.getVisible()).toBe(false);
 });
+
+test('en celular el botón de capas abre directo la lista, sin paso intermedio', () => {
+  const capa = new VectorLayer({ visible: true });
+  const raiz = montar([{ titulo: 'Grupo', capas: [{ capa, nombre: 'Capa', leyenda: [{ texto: 'Rewe' }] }] }]);
+  const fab = raiz?.querySelector<HTMLButtonElement>('.sc-fab');
+  expect(raiz?.querySelector('.sc-todas')).toBeNull();
+  fab?.click();
+  expect(raiz).toHaveClass('sc-hoja-abierta');
+  expect(fab).toHaveAttribute('aria-expanded', 'true');
+  expect(raiz?.querySelector('.sc-detalle')).toHaveClass('sc-con-leyenda');
+  raiz?.querySelector<HTMLButtonElement>('.sc-cerrar')?.click();
+  expect(raiz).not.toHaveClass('sc-hoja-abierta');
+  expect(fab).toHaveAttribute('aria-expanded', 'false');
+});
