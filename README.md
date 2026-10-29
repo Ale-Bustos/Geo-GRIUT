@@ -26,6 +26,7 @@ Construido con [React](https://react.dev), [TypeScript](https://www.typescriptla
 - `src/MapComponent.tsx`: mapa, capas, leyenda, brújula y tutorial.
 - `src/FeaturePopup.tsx`: contenido del popup de los puntos.
 - `src/SelectorCapas.ts`: selector de capas con leyenda (adaptado de `simbologia_mapa_web/`).
+- `src/TutorialMapa.ts`: tutorial de bienvenida (adaptado de `simbologia_mapa_web/`).
 - `public/geojson/`: capas vectoriales (ríos, esteros, quebradas, límite provincial, toponimia, conflictos, puntos históricos y de resignificación).
 - `vercel.json`: configuración de despliegue.
 

@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
+import { TUTORIAL_KEY } from './MapComponent';
 
 beforeEach(() => {
-  localStorage.setItem('introShown', 'true'); // Evita que el tutorial se inicie durante los tests
+  localStorage.setItem(TUTORIAL_KEY, '1'); // Evita que el tutorial se inicie durante los tests
 });
 
 test('muestra el mapa, la brújula y el logo de GRIUT', () => {

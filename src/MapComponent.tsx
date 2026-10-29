@@ -18,14 +18,13 @@ import Point from 'ol/geom/Point';
 import type BaseLayer from 'ol/layer/Base';
 import type { FeatureLike } from 'ol/Feature';
 import type { Coordinate } from 'ol/coordinate';
-import SelectorCapas, { ANCHO_MOVIL } from './SelectorCapas'; // Selector de capas con leyenda
+import SelectorCapas from './SelectorCapas'; // Selector de capas con leyenda
 import './css/compass.css'; // Importa los estilos de la brújula desde src/css
 import './css/logo.css'; // Importa los estilos del logo de GRIUT
 import './css/popup.css'; // Importa los estilos del popup de los puntos
 import './css/selector-capas.css'; // Estilos del selector de capas
-import 'intro.js/introjs.css';
-import './css/tutorial.css'; // Ajustes de estilo del tutorial
-import introJs from 'intro.js'; // Importa introJs como exportación por defecto
+import './css/tutorial-mapa.css'; // Estilos del tutorial
+import TutorialMapa from './TutorialMapa'; // Tutorial de bienvenida
 import FeaturePopup from './FeaturePopup';
 
 // Punto del mapa cuyo popup está abierto
@@ -75,6 +74,9 @@ const LABEL_DECLUTTER_GROUP = 'etiquetas';
 
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
+
+// Clave de localStorage que recuerda que ya se vio el tutorial
+export const TUTORIAL_KEY = 'tutorialMapa.visto.v1';
 
 // Busca una capa por su título, también dentro de los grupos
 const findLayer = (map: Map, title: string) => {
@@ -531,72 +533,45 @@ const MapComponent = () => {
     map.getView().on('change:rotation', updateCompass);
     updateCompass(); // Orienta la brújula según la rotación inicial del mapa
 
-    // Configurar intro.js para el tutorial
-    const intro = introJs();
-    intro.setOptions({
-      steps: [
+    // Tutorial de bienvenida (textos propuestos por GRIUT; el mapudungun está por validar con las comunidades)
+    const tutorial = new TutorialMapa({
+      clave: TUTORIAL_KEY, // Cambia el sufijo de la clave para que todos lo vuelvan a ver
+      pasos: [
         {
-          intro: "Bienvenido a Geo-GRIUT, nuestro visualizador de mapas interactivo. Vamos a guiarte a través de las funcionalidades básicas."
+          saludo: 'Mari mari kom pu che',
+          titulo: 'Bienvenida al mapa del territorio',
+          texto: '<p>Recorre el territorio desde <i lang="arn">Lafkenmapu</i>, la costa, hasta <i lang="arn">Nawelfuta</i>, con sus nombres originales, sus <i lang="arn">rewe</i> y su memoria.</p>'
         },
         {
-          element: document.querySelector('#map'),
-          intro: "Este  mapa  puedes interactuar con diferentes capas y ver información geográfica...",
-          position: 'bottom'
+          titulo: 'Elige qué ver',
+          texto: '<p>En <strong>Capas</strong> enciende o apaga ríos, esteros, límites y puntos de interés. Cada capa muestra su símbolo para reconocerla en el mapa.</p>',
+          objetivo: '.sc-panel', // Escritorio: la tarjeta de capas
+          objetivoMovil: '.sc-fab' // Celular: el botón de capas
         },
         {
-          element: document.querySelector('.compass'),
-          intro: "Esta es la brújula. Puelmapu (el este) queda arriba al iniciar. Arrástrala para girar el mapa y haz clic en ella para alternar entre el este y el norte arriba.",
-          position: 'right'
+          icono: '/simbologia/rewe.png',
+          titulo: 'Puntos con historia',
+          texto: '<p>Toca un punto para conocer su historia: <i lang="arn">rewe</i>, sitios arqueológicos, batallas y conflictos socioambientales del territorio.</p>'
         },
         {
-          // En celular el panel está oculto y se abre desde el botón flotante
-          element: document.querySelector(window.innerWidth <= ANCHO_MOVIL ? '.sc-fab' : '.sc-panel'),
-          intro: "Este es el control de capas. Puedes usarlo para alternar la visibilidad de las diferentes capas del mapa. Haz clic en un punto de conflicto, histórico o de resignificación para ver su información.",
-          position: 'left'
+          titulo: 'Los nombres del territorio',
+          texto: '<p>Los lugares aparecen con su nombre en mapudungun: <i lang="arn">Peguko</i> (Penco), <i lang="arn">Tralkawenu</i> (Talcahuano), <i lang="arn">Fio-Fio Lewfu</i> (río Biobío).</p>'
         },
         {
-          intro: "<input type='checkbox' id='dont-show-again'> No volver a mostrar.             Página en Desarrollo 🦖",
-          position: 'bottom'
+          titulo: 'Orientarse con el meli witran mapu',
+          texto: '<p>Las cuatro tierras indican la orientación: <i lang="arn">Puelmapu</i> al este, <i lang="arn">Pikunmapu</i> al norte, <i lang="arn">Willimapu</i> al sur y <i lang="arn">Lafkenmapu</i> al oeste, hacia el mar. Arrastra la brújula para girar el mapa.</p><p>Pewkallal, ¡buen recorrido!</p>',
+          objetivo: '#compass'
         }
-      ],
-      showStepNumbers: false,
-      showProgress: true,
-      scrollToElement: true,
-      disableInteraction: true,
-      hideNext: false,
-      hidePrev: false,
-      exitOnOverlayClick: false,
-      exitOnEsc: true,
-      overlayOpacity: 0.6,
-      keyboardNavigation: true,
-      doneLabel: 'Listo',
-      nextLabel: 'Siguiente',
-      prevLabel: 'Anterior',
-      skipLabel: 'Saltar',
-      scrollTo: 'tooltip'
+      ]
     });
 
-    // Guardar la preferencia si el usuario marcó "No volver a mostrar"
-    const saveIntroPreference = () => {
-      const dontShowAgain = document.getElementById('dont-show-again') as HTMLInputElement | null;
-      if (dontShowAgain?.checked) {
-        localStorage.setItem('introShown', 'true');
-      }
-    };
-    intro.oncomplete(saveIntroPreference);
-    intro.onexit(saveIntroPreference);
-
-    // Mostrar el tutorial solo si el usuario no ha marcado "No volver a mostrar"
-    let introTimeout: ReturnType<typeof setTimeout> | undefined;
-    if (!localStorage.getItem('introShown')) {
-      introTimeout = setTimeout(() => {
-        intro.start();
-      }, 1000); // Ajusta el tiempo según sea necesario
-    }
+    // Espera a que el mapa y el selector de capas estén dibujados para destacarlos
+    const tutorialTimeout = setTimeout(() => tutorial.iniciar(), 1000);
 
     // Limpieza al desmontar el componente
     return () => {
-      clearTimeout(introTimeout);
+      clearTimeout(tutorialTimeout);
+      tutorial.destruir();
       document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
       mapRef.current = null;
