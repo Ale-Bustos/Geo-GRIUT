@@ -2,7 +2,7 @@
 
 Visualizador de mapas interactivo del Grupo de Estudios Interculturales Urbanos y Territoriales (GRIUT).
 
-Construido con [React](https://react.dev) y [TypeScript](https://www.typescriptlang.org), [OpenLayers](https://openlayers.org) y [ol-ext](https://viglino.github.io/ol-ext/), empaquetado con [Vite](https://vite.dev) y publicado en Vercel.
+Construido con [React](https://react.dev), [TypeScript](https://www.typescriptlang.org) y [OpenLayers](https://openlayers.org), empaquetado con [Vite](https://vite.dev) y publicado en Vercel.
 
 ## Requisitos
 
@@ -25,6 +25,7 @@ Construido con [React](https://react.dev) y [TypeScript](https://www.typescriptl
 
 - `src/MapComponent.tsx`: mapa, capas, leyenda, brújula y tutorial.
 - `src/FeaturePopup.tsx`: contenido del popup de los puntos.
+- `src/SelectorCapas.ts`: selector de capas con leyenda (adaptado de `simbologia_mapa_web/`).
 - `public/geojson/`: capas vectoriales (ríos, esteros, quebradas, límite provincial, toponimia, conflictos, puntos históricos y de resignificación).
 - `vercel.json`: configuración de despliegue.
 
