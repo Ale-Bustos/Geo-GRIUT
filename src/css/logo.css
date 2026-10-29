@@ -22,7 +22,8 @@
 }
 
 /* Estilo para vistas de escritorio */
-@media (min-width: 768px) {
+/* Celular acostado (alto ≤ 500 px) mantiene el tamaño de celular */
+@media (min-width: 768px) and (min-height: 501px) {
   .griut-logo img {
     width: 90px;
   }

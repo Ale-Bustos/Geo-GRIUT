@@ -32,6 +32,7 @@ import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
 import TutorialMapa from './TutorialMapa'; // Tutorial de bienvenida
 import FeaturePopup from './FeaturePopup';
+import simboloBrujula from './img/compass-simbolo.png'; // Símbolo del meli witran mapu, sin los nombres
 
 // Punto del mapa cuyo popup está abierto
 interface SelectedFeature {
@@ -58,6 +59,24 @@ const COMPASS_KEY_STEP = Math.PI / 12; // 15°
 // Giro mínimo del puntero para que se considere un arrastre y no un clic
 const COMPASS_DRAG_THRESHOLD = Math.PI / 90; // 2°
 const COMPASS_ANIMATION_MS = 400;
+
+// Arco de la brújula (viewBox de 200 × 200, centro en 100,100) por el que corre el nombre de cada tierra.
+// Los ángulos se miden en grados desde arriba en sentido horario; el sentido del recorrido decide
+// hacia dónde mira la letra: horario, hacia afuera; antihorario, hacia el centro
+const compassArc = (radius: number, from: number, to: number) => {
+  const point = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    return (100 + radius * Math.sin(rad)).toFixed(2) + ' ' + (100 - radius * Math.cos(rad)).toFixed(2);
+  };
+  return 'M ' + point(from) + ' A ' + radius + ' ' + radius + ' 0 0 ' + (to > from ? 1 : 0) + ' ' + point(to);
+};
+// Los nombres van como texto (no dentro de la imagen) para que se lean bien aunque la brújula sea chica
+const COMPASS_LABELS = [
+  { id: 'puel', text: 'PUELMAPU', d: compassArc(66, -60, 60), length: 82, className: 'compass-puel' },
+  { id: 'willi', text: 'WILLIMAPU', d: compassArc(66, 30, 150), length: 80 },
+  { id: 'lafken', text: 'LAFKENMAPU', d: compassArc(80, 240, 120), length: 98 },
+  { id: 'pikun', text: 'PIKUNMAPU', d: compassArc(66, 210, 330), length: 88 }
+];
 
 // Densidad de píxeles con que se dibuja el mapa mientras se mueve. Pintar el canvas a la densidad
 // de una pantalla de alta resolución es lo que más cuesta en cada cuadro; al detenerse el mapa
@@ -754,7 +773,19 @@ const MapComponent = () => {
         onKeyDown={handleCompassKeyDown}
         aria-label="Brújula: arrastra o usa las flechas para girar el mapa; pulsa para alternar entre el este y el norte arriba"
         title="Arrastra para girar el mapa · clic: este / norte arriba"
-      ></button>
+      >
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <image href={simboloBrujula} x="36" y="36" width="128" height="128" className="compass-simbolo" />
+          {COMPASS_LABELS.map((label) => (
+            <g key={label.id}>
+              <path id={'compass-arco-' + label.id} d={label.d} fill="none" />
+              <text className={'compass-nombre ' + (label.className ?? '')} textLength={label.length} lengthAdjust="spacingAndGlyphs">
+                <textPath href={'#compass-arco-' + label.id} startOffset="50%" textAnchor="middle">{label.text}</textPath>
+              </text>
+            </g>
+          ))}
+        </svg>
+      </button>
       <div className="griut-logo">
         <img src="logo01.png" alt="Logo GRIUT" />
         <div><b>Grupo de Estudios Interculturales<br />Urbanos y Territoriales</b></div>
