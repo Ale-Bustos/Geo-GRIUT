@@ -29,3 +29,14 @@ test('el interruptor muestra y oculta la capa', () => {
   interruptor?.click();
   expect(capa.getVisible()).toBe(false);
 });
+
+test('tocar el nombre de la capa también la muestra y oculta', () => {
+  const capa = new VectorLayer({ visible: false });
+  const raiz = montar([{ titulo: 'Grupo', capas: [{ capa, nombre: 'Capa' }] }]);
+  const nombre = raiz?.querySelector<HTMLElement>('.sc-nombre');
+  nombre?.click();
+  expect(capa.getVisible()).toBe(true);
+  expect(raiz?.querySelector('.sc-switch')).toHaveAttribute('aria-checked', 'true');
+  nombre?.click();
+  expect(capa.getVisible()).toBe(false);
+});
