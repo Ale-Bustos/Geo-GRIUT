@@ -54,6 +54,11 @@ const COMPASS_KEY_STEP = Math.PI / 12; // 15°
 const COMPASS_DRAG_THRESHOLD = Math.PI / 90; // 2°
 const COMPASS_ANIMATION_MS = 400;
 
+// Densidad de píxeles con que se dibuja el mapa mientras se mueve. Pintar el canvas a la densidad
+// de una pantalla de alta resolución es lo que más cuesta en cada cuadro; al detenerse el mapa
+// vuelve a la densidad de la pantalla para que se vea nítido
+const MOVING_PIXEL_RATIO = 1;
+
 // Lleva un ángulo al rango (-π, π], para comparar rotaciones y girar por el camino más corto
 const normalizeAngle = (angle: number) => Math.atan2(Math.sin(angle), Math.cos(angle));
 
@@ -404,6 +409,10 @@ const MapComponent = () => {
     });
     mapRef.current = map;
 
+    // Baja la densidad mientras el mapa se mueve (arrastre, zoom, giro o animación)
+    map.on('movestart', () => map.setPixelRatio(Math.min(window.devicePixelRatio, MOVING_PIXEL_RATIO)));
+    map.on('moveend', () => map.setPixelRatio(window.devicePixelRatio));
+
     // Selector de capas con su leyenda; los símbolos reproducen cómo se dibuja cada capa
     map.addControl(new SelectorCapas({
       titulo: 'Capas',
@@ -633,7 +642,11 @@ const MapComponent = () => {
       return;
     }
     event.currentTarget.setPointerCapture(event.pointerId); // Sigue recibiendo el movimiento fuera de la brújula
-    mapRef.current?.getView().cancelAnimations();
+    const view = mapRef.current?.getView();
+    view?.cancelAnimations();
+    // Marca el giro como una interacción, igual que arrastrar el mapa: OpenLayers dispara un solo
+    // movestart/moveend para todo el giro y no redibuja las capas vectoriales en cada paso
+    view?.beginInteraction();
     compassDragRef.current = {
       pointerId: event.pointerId,
       lastAngle: pointerAngle(event.currentTarget, event.clientX, event.clientY),
@@ -665,6 +678,7 @@ const MapComponent = () => {
     }
     suppressCompassClickRef.current = drag.dragged;
     compassDragRef.current = null;
+    mapRef.current?.getView().endInteraction();
   };
 
   // Con el teclado: las flechas giran el mapa e Inicio vuelve al este arriba
