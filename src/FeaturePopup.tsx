@@ -93,12 +93,32 @@ interface FeaturePopupProps {
 
 const formatNumber = (value: number) => value.toLocaleString('es-CL', { maximumFractionDigits: 1 });
 
-// Polígonos del censo (manzana o localidad rural) con su porcentaje de población indígena
+const toNumber = (value: unknown) => (isEmpty(value) || !Number.isFinite(Number(value)) ? null : Number(value));
+
+const formatPorcentaje = (porcentaje: number, indigenas: number, total: number) =>
+  `${formatNumber(porcentaje)} % · ${formatNumber(indigenas)} de ${formatNumber(total)} personas`;
+
+// Polígonos del Censo 2024 (manzana o localidad rural) con su porcentaje de población indígena
+// y, cuando la misma unidad existía en 2017, el dato de ese censo para comparar
 const PoblacionContent = ({ properties }: { properties: Properties }) => {
-  const total = Number(properties.total_personas);
-  const indigenas = Number(properties.personas_indigenas);
-  const sinDato = isEmpty(properties.total_personas) || !Number.isFinite(total);
+  const total = toNumber(properties.total_personas);
+  const indigenas = toNumber(properties.personas_indigenas);
+  const porcentaje = toNumber(properties.porc_indigena);
+  const lengua = toNumber(properties.lengua_indigena);
+  const total2017 = toNumber(properties.total_personas_2017);
+  const indigenas2017 = toNumber(properties.personas_indigenas_2017);
+  const porcentaje2017 = toNumber(properties.porc_indigena_2017);
   const lugar = isEmpty(properties.localidad) ? 'Manzana censal' : capitalize(String(properties.localidad).toLowerCase());
+
+  let poblacion = 'Sin dato';
+  if (total === 0) {
+    poblacion = 'Sin habitantes censados';
+  } else if (Number(properties.reservado) === 1) {
+    poblacion = `Dato reservado por el INE · ${formatNumber(total!)} personas`;
+  } else if (porcentaje !== null && indigenas !== null && total !== null) {
+    poblacion = formatPorcentaje(porcentaje, indigenas, total);
+  }
+
   return (
     <>
       <h2 className="feature-popup-title">{lugar}</h2>
@@ -111,21 +131,38 @@ const PoblacionContent = ({ properties }: { properties: Properties }) => {
         )}
         <div>
           <dt>Población indígena</dt>
-          <dd>
-            {sinDato
-              ? 'Sin dato'
-              : `${formatNumber(Number(properties.porc_indigena))} % · ${formatNumber(indigenas)} de ${formatNumber(total)} personas`}
-          </dd>
+          <dd>{poblacion}</dd>
         </div>
+        {!isEmpty(properties.entidad) && (
+          <div>
+            <dt>Entidad</dt>
+            <dd>{capitalize(String(properties.entidad).toLowerCase())}</dd>
+          </div>
+        )}
+        {lengua !== null && lengua > 0 && (
+          <div>
+            <dt>Habla o entiende una lengua indígena</dt>
+            <dd>{formatNumber(lengua)} {lengua === 1 ? 'persona' : 'personas'}</dd>
+          </div>
+        )}
+        {porcentaje2017 !== null && indigenas2017 !== null && total2017 !== null && (
+          <div>
+            <dt>Censo 2017</dt>
+            <dd>{formatPorcentaje(porcentaje2017, indigenas2017, total2017)}</dd>
+          </div>
+        )}
       </dl>
-      <p className="feature-popup-nota">Censo 2017: personas que se consideran pertenecientes a un pueblo originario.</p>
+      <p className="feature-popup-nota">
+        {properties.censo === undefined ? 'Censo 2017' : 'Censo 2024'}: personas que se consideran pertenecientes a un pueblo originario.
+      </p>
     </>
   );
 };
 
 // Contenido del popup de un punto del mapa
 const FeaturePopup = ({ properties, category, onClose }: FeaturePopupProps) => {
-  if ('porc_indigena' in properties) {
+  // Las teselas omiten los campos vacíos: 'censo' siempre viene en los datos de 2024
+  if ('censo' in properties || 'porc_indigena' in properties) {
     return (
       <div className="feature-popup" role="dialog" aria-label={category}>
         <div className="feature-popup-banda" aria-hidden="true"></div>

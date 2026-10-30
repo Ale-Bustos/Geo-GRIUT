@@ -257,7 +257,7 @@ const createWaterLayer = (layerName: string, color: string, title: string, label
   });
 };
 
-// Población indígena (Censo 2017): rampa secuencial de un solo tono, de claro a oscuro, en tierra
+// Población indígena (Censo 2024): rampa secuencial de un solo tono, de claro a oscuro, en tierra
 // para no confundirse con el azul del agua ni con el rojo de los conflictos
 export const POBLACION_CLASES = [
   { hasta: 0, color: '#F3EEE6', texto: 'Sin población indígena' },
@@ -267,11 +267,15 @@ export const POBLACION_CLASES = [
   { hasta: Infinity, color: '#8C510A', texto: '20 % o más' }
 ];
 
+// El INE reserva la cifra de población indígena de las unidades con pocas personas (secreto estadístico)
+export const POBLACION_RESERVADA = { color: '#D6D3D1', texto: 'Dato reservado por el INE' };
+
 const poblacionStyles = (borde: string) => {
   const stroke = new Stroke({ color: borde, width: 0.6 });
   return {
     clases: POBLACION_CLASES.map((clase) => new Style({ fill: new Fill({ color: clase.color }), stroke })),
-    // Sin dato: solo el contorno
+    reservado: new Style({ fill: new Fill({ color: POBLACION_RESERVADA.color }), stroke }),
+    // Sin habitantes: solo el contorno
     sinDato: new Style({ stroke })
   };
 };
@@ -284,7 +288,7 @@ const createPoblacionLayer = (layerName: string, title: string, popupCategory: s
     style: (feature) => {
       const value = feature.get('porc_indigena');
       if (value === null || value === undefined) {
-        return styles.sinDato;
+        return Number(feature.get('reservado')) === 1 ? styles.reservado : styles.sinDato;
       }
       const index = POBLACION_CLASES.findIndex((clase) => Number(value) <= clase.hasta);
       return styles.clases[index === -1 ? POBLACION_CLASES.length - 1 : index];
@@ -325,9 +329,9 @@ export const createLayers = () => {
     'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
 
   // Las manzanas son chicas: se muestran desde el zoom 12; las localidades rurales, desde el 10
-  const poblacionManzanasLayer = createPoblacionLayer('poblacion_indigena_mz', 'Población indígena por manzana',
+  const poblacionManzanasLayer = createPoblacionLayer('poblacion_indigena_mz_2024', 'Población indígena por manzana',
     'Población indígena · manzana', 'rgba(255, 255, 255, 0.6)', 12);
-  const poblacionLocalidadesLayer = createPoblacionLayer('poblacion_indigena_loc', 'Población indígena por localidad',
+  const poblacionLocalidadesLayer = createPoblacionLayer('poblacion_indigena_loc_2024', 'Población indígena por localidad',
     'Población indígena · localidad rural', 'rgba(84, 48, 5, 0.6)', 10);
 
   const esterosLayer = createWaterLayer('esteros', '#6dceff', 'Esteros', '13px');

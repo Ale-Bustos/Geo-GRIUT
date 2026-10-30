@@ -2,7 +2,7 @@
 // Los símbolos reproducen cómo se dibuja cada capa
 import type Map from 'ol/Map';
 import SelectorCapas from './SelectorCapas';
-import { findLayer, POBLACION_CLASES } from './capas';
+import { findLayer, POBLACION_CLASES, POBLACION_RESERVADA } from './capas';
 import { NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 
 export const crearSelectorCapas = (map: Map) => new SelectorCapas({
@@ -34,7 +34,7 @@ export const crearSelectorCapas = (map: Map) => new SelectorCapas({
           capa: findLayer(map, 'Población indígena por manzana'),
           nombre: 'Por manzana',
           simbolo: { tipo: 'area', relleno: '#BF812D', borde: '#FFFFFF' },
-          leyenda: POBLACION_CLASES.map((clase) => ({ simbolo: { tipo: 'area' as const, relleno: clase.color, borde: '#A8A29E' }, texto: clase.texto }))
+          leyenda: [...POBLACION_CLASES, POBLACION_RESERVADA].map((clase) => ({ simbolo: { tipo: 'area' as const, relleno: clase.color, borde: '#A8A29E' }, texto: clase.texto }))
         },
         {
           capa: findLayer(map, 'Población indígena por localidad'),
