@@ -177,6 +177,31 @@
 .feature-popup-sources a:hover { text-decoration: underline; }
 .feature-popup-sources a:focus-visible { outline: 2px solid var(--pp-kallfu); outline-offset: 2px; border-radius: 4px; }
 
+/* Foto o lámina: ancho completo, recortada a una altura fija; tocarla la abre en grande */
+.feature-popup-foto { margin: 0 0 10px; }
+.feature-popup-foto a { display: block; border-radius: 8px; overflow: hidden; background: var(--pp-linea); }
+.feature-popup-foto img { display: block; width: 100%; height: 150px; object-fit: cover; }
+.feature-popup-foto a:focus-visible { outline: 2px solid var(--pp-kallfu); outline-offset: 2px; }
+.feature-popup-foto figcaption { margin-top: 3px; font-size: 11px; color: var(--pp-secundario); }
+
+/* Mirada ambiental / mapuche: texto corrido con una línea kelü al costado */
+.feature-popup-mirada {
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 3px solid var(--pp-kelu);
+}
+.feature-popup-mirada h3 {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pp-kelu);
+}
+.feature-popup-mirada p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+
+.feature-popup-nota { margin: 8px 0 0; font-size: 11.5px; color: var(--pp-secundario); }
+
 @media (prefers-reduced-motion: reduce) {
   .feature-popup { animation: none; }
 }
@@ -196,4 +221,6 @@
   .feature-popup-title { margin: 0 36px 6px 0; font-size: 16px; }
   .feature-popup dl > div { padding: 5px 0; }
   .feature-popup dd { font-size: 13.5px; }
+  .feature-popup-foto img { height: 120px; }
+  .feature-popup-mirada p { font-size: 13px; }
 }

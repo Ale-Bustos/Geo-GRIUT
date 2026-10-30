@@ -324,6 +324,45 @@ const createWaterLayer = (layerName: string, color: string, title: string, label
   });
 };
 
+// Población indígena (Censo 2017): rampa secuencial de un solo tono, de claro a oscuro, en tierra
+// para no confundirse con el azul del agua ni con el rojo de los conflictos
+const POBLACION_CLASES = [
+  { hasta: 0, color: '#F3EEE6', texto: 'Sin población indígena' },
+  { hasta: 5, color: '#F6E8C3', texto: 'Menos de 5 %' },
+  { hasta: 10, color: '#DFC27D', texto: '5 a 10 %' },
+  { hasta: 20, color: '#BF812D', texto: '10 a 20 %' },
+  { hasta: Infinity, color: '#8C510A', texto: '20 % o más' }
+];
+
+const poblacionStyles = (borde: string) => {
+  const stroke = new Stroke({ color: borde, width: 0.6 });
+  return {
+    clases: POBLACION_CLASES.map((clase) => new Style({ fill: new Fill({ color: clase.color }), stroke })),
+    // Sin dato: solo el contorno
+    sinDato: new Style({ stroke })
+  };
+};
+
+// Capa de GeoServer con el porcentaje de población indígena de cada polígono (manzana o localidad)
+const createPoblacionLayer = (layerName: string, title: string, popupCategory: string, borde: string, minZoom: number) => {
+  const styles = poblacionStyles(borde);
+  return new VectorTileLayer({
+    source: createGeoServerTileSource(layerName),
+    style: (feature) => {
+      const value = feature.get('porc_indigena');
+      if (value === null || value === undefined) {
+        return styles.sinDato;
+      }
+      const index = POBLACION_CLASES.findIndex((clase) => Number(value) <= clase.hasta);
+      return styles.clases[index === -1 ? POBLACION_CLASES.length - 1 : index];
+    },
+    opacity: 0.7, // Deja ver el mapa base y los nombres debajo
+    properties: { title, popupCategory },
+    visible: false,
+    minZoom: minZoom - ZOOM_EPSILON
+  });
+};
+
 // Crea todas las capas del mapa (se llama al montar el componente para no compartir capas entre mapas)
 const createLayers = () => {
   const conflictoSymbol = createCircleSymbol('conflicto', 'red', 'white');
@@ -351,6 +390,12 @@ const createLayers = () => {
 
   const puntosResignificacionLayer = createPointLayer('/geojson/Puntos_Resignificacion.geojson', 'Puntos de Resignificación',
     'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
+
+  // Las manzanas son chicas: se muestran desde el zoom 12; las localidades rurales, desde el 10
+  const poblacionManzanasLayer = createPoblacionLayer('poblacion_indigena_mz', 'Población indígena por manzana',
+    'Población indígena · manzana', 'rgba(255, 255, 255, 0.6)', 12);
+  const poblacionLocalidadesLayer = createPoblacionLayer('poblacion_indigena_loc', 'Población indígena por localidad',
+    'Población indígena · localidad rural', 'rgba(84, 48, 5, 0.6)', 10);
 
   const esterosLayer = createWaterLayer('esteros', '#6dceff', 'Esteros', '13px');
   const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos', '600 15px');
@@ -444,6 +489,9 @@ const createLayers = () => {
     new LayerGroup({
       properties: { title: 'Capas' },
       layers: [
+        // Primero (abajo de todo) los polígonos de población, para no tapar ríos, nombres ni puntos
+        poblacionLocalidadesLayer,
+        poblacionManzanasLayer,
         conflictosLayer,
         puntosHistoricosLayer,
         puntosResignificacionLayer,
@@ -513,6 +561,23 @@ const MapComponent = () => {
             { capa: findLayer(map, 'Ríos'), nombre: 'Ríos', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Esteros'), nombre: 'Esteros', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Quebradas'), nombre: 'Quebradas', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } }
+          ]
+        },
+        {
+          titulo: 'Población indígena',
+          nombreCorto: 'Población',
+          capas: [
+            {
+              capa: findLayer(map, 'Población indígena por manzana'),
+              nombre: 'Por manzana',
+              simbolo: { tipo: 'area', relleno: '#BF812D', borde: '#FFFFFF' },
+              leyenda: POBLACION_CLASES.map((clase) => ({ simbolo: { tipo: 'area' as const, relleno: clase.color, borde: '#A8A29E' }, texto: clase.texto }))
+            },
+            {
+              capa: findLayer(map, 'Población indígena por localidad'),
+              nombre: 'Por localidad rural',
+              simbolo: { tipo: 'area', relleno: '#DFC27D', borde: '#543005' }
+            }
           ]
         },
         {
