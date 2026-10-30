@@ -1,0 +1,3 @@
+/* Las pinturas del territorio (cordillera, río) se multiplican con el mapa base:
+   el sombreado del relieve y el agua siguen a la vista */
+.pintura-territorio { mix-blend-mode: multiply; }
