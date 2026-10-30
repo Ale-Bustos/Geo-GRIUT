@@ -6,8 +6,10 @@
  *   de 1,5 km para unir los cordones separados por valles interiores) y eje de la cumbre.
  * - Fio-Fio Lewfu (río Biobío): superficie del agua y eje del río de OpenStreetMap; el cauce con un
  *   margen de 150 m, suavizado. El nombre va sobre el curso bajo, de Hualqui al mar.
- * - Río Andalién: eje de la capa de ríos de GRIUT (griut.rios) como franja de 240 m, más el agua del
- *   tramo bajo de OpenStreetMap. El nombre va sobre el tramo recto antes de Concepción.
+ * - Anca-lighen: trazo sobre el eje del río de OpenStreetMap (el mismo que dibuja el mapa base). Es un
+ *   río angosto: un ancho fijo en metros se perdería de lejos y taparía todo de cerca, así que el trazo
+ *   mide 180 m pero nunca menos de 6 px ni más de 16 px. El nombre va sobre el tramo recto antes de
+ *   Concepción.
  *
  * Al aparecer, cada pintura se descubre en 3 s en su propia dirección (la cordillera de sur a norte,
  * el río aguas abajo) y queda fija. Un único controlador (BarridoPinturas) lleva el tiempo de todas
@@ -41,6 +43,9 @@ export interface DefinicionPintura {
   colorNombre: string;
   cursiva?: boolean;
   difuminadoPx: number; // Borde suave de la pintura, como acuarela
+  // Ríos angostos: en vez de un área, un trazo sobre el cauce (elemento tipo "cauce") con ancho en
+  // metros acotado en píxeles
+  trazo?: { metros: number; minPx: number; maxPx: number };
   atribucion?: string; // Crédito de los datos, en el control de atribución del mapa
   desde: [number, number]; // Punto (lon, lat) donde empieza el barrido...
   hasta: [number, number]; // ...y hacia donde avanza
@@ -73,17 +78,18 @@ export const FIOFIO_LEWFU: DefinicionPintura = {
 };
 
 // Mismo azul que el Biobío: la hidrografía pintada se lee como una sola familia
-export const ANDALIEN: DefinicionPintura = {
-  titulo: 'Andalién',
-  url: '/geojson/Andalien.geojson',
-  color: 'rgba(43, 80, 160, 0.38)',
-  nombre: 'ANDALIÉN',
+export const ANCA_LIGHEN: DefinicionPintura = {
+  titulo: 'Anca-lighen',
+  url: '/geojson/AncaLighen.geojson',
+  color: 'rgba(43, 80, 160, 0.55)', // Más intenso que el Biobío: el trazo es angosto y si no se pierde
+  nombre: 'ANCA-LIGHEN',
   colorNombre: '#173F6B',
   cursiva: true,
-  difuminadoPx: 1.5, // Río angosto: menos difuminado para que la franja no se pierda
-  atribucion: 'Andalién (tramo bajo): © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
-  desde: [-72.847, -36.812], // Aguas abajo, de oriente a la bahía de Concepción
-  hasta: [-73.044, -36.763]
+  difuminadoPx: 1.5, // Río angosto: menos difuminado para que el trazo no se pierda
+  trazo: { metros: 180, minPx: 8, maxPx: 16 },
+  atribucion: 'Anca-lighen: © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+  desde: [-72.821, -36.793], // Aguas abajo, de oriente a la bahía de Concepción
+  hasta: [-73.016, -36.74]
 };
 
 export const tituloNombre = (def: DefinicionPintura) => def.titulo + ' (nombre)';
@@ -94,6 +100,14 @@ const espaciar = (texto: string) => texto.split('').join(' ');
 export function crearPintura(def: DefinicionPintura) {
   const source = new VectorSource({ url: def.url, format: new GeoJSON(), attributions: def.atribucion });
   const estiloArea = new Style({ fill: new Fill({ color: def.color }) });
+  // Un estilo por ancho entero de trazo, para no crearlos en cada cuadro
+  const estilosTrazo: Record<number, Style> = {};
+  const estiloTrazo = (resolution: number) => {
+    const t = def.trazo!;
+    const ancho = Math.round(Math.min(t.maxPx, Math.max(t.minPx, t.metros / resolution)));
+    estilosTrazo[ancho] ??= new Style({ stroke: new Stroke({ color: def.color, width: ancho, lineCap: 'round', lineJoin: 'round' }) });
+    return estilosTrazo[ancho];
+  };
   // Tamaño del nombre según el zoom (14 a 20 px); un estilo por tamaño para no crearlos en cada cuadro
   const estilosNombre: Record<number, Style> = {};
   const estiloNombre = (resolution: number) => {
@@ -114,7 +128,12 @@ export function crearPintura(def: DefinicionPintura) {
   };
   const pintura = new VectorLayer({
     source,
-    style: (feature) => (feature.get('tipo') === 'area' ? estiloArea : undefined),
+    style: (feature, resolution) => {
+      const tipo = feature.get('tipo');
+      if (tipo === 'area') return estiloArea;
+      if (tipo === 'cauce' && def.trazo) return estiloTrazo(resolution);
+      return undefined;
+    },
     className: 'ol-layer pintura-territorio', // Lienzo propio, para mezclarlo con "multiplicar" (CSS)
     properties: { title: def.titulo },
     updateWhileAnimating: true,
@@ -122,7 +141,7 @@ export function crearPintura(def: DefinicionPintura) {
   });
   const nombre = new VectorLayer({
     source,
-    style: (feature, resolution) => (feature.get('tipo') !== 'area' ? estiloNombre(resolution) : undefined),
+    style: (feature, resolution) => (feature.get('tipo') === 'eje' || feature.get('tipo') === 'cumbre' ? estiloNombre(resolution) : undefined),
     className: 'ol-layer pintura-territorio-nombre',
     properties: { title: tituloNombre(def) },
     minZoom: 9.5,

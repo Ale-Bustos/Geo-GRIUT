@@ -1,5 +1,5 @@
 import Map from 'ol/Map';
-import { BarridoPinturas, crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANDALIEN } from './PinturaTerritorio';
+import { BarridoPinturas, crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 
 // Reloj de cuadros controlado a mano: cada llamada a avanzar(ms) ejecuta los cuadros pendientes
 let pendientes: FrameRequestCallback[] = [];
@@ -93,7 +93,7 @@ test('destruir corta los barridos en curso', () => {
 });
 
 test('las tres pinturas comparten un solo ciclo y terminan juntas si empiezan juntas', () => {
-  const pinturas = [NAWELFUTA, FIOFIO_LEWFU, ANDALIEN].map((def) => ({ def, ...crearPintura(def) }));
+  const pinturas = [NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN].map((def) => ({ def, ...crearPintura(def) }));
   const map = new Map({ layers: pinturas.flatMap((p) => [p.pintura, p.nombre]) });
   const barridos = new BarridoPinturas(map, 3000);
   pinturas.forEach((p) => barridos.registrar(p.def, p.pintura, p.nombre));
