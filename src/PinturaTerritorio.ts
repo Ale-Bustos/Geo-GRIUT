@@ -33,6 +33,9 @@ import './css/pintura-territorio.css';
 export const DURACION_BARRIDO_MS = 3000;
 const FUENTE = '"Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 const INICIO_NOMBRE = 0.6; // Fracción del barrido desde la que empieza a aparecer el nombre
+// Safari anterior a la 18 no tiene filtros en el lienzo: ahí el borde suave se imita con una sombra
+// difuminada del mismo color
+const SOPORTA_FILTRO = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
 const FRENTE = 0.25; // Largo del frente difuminado, como fracción del recorrido
 
 export interface DefinicionPintura {
@@ -159,6 +162,7 @@ const suavizar = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t +
 interface Barrido {
   pintura: VectorLayer;
   difuminadoPx: number;
+  color: string;
   origen: number[]; // Inicio del recorrido, en coordenadas del mapa
   eje: number[]; // Vector unitario de avance
   largo: number;
@@ -180,7 +184,7 @@ export class BarridoPinturas {
     const destino = fromLonLat(def.hasta);
     const dx = destino[0] - origen[0], dy = destino[1] - origen[1];
     const largo = Math.hypot(dx, dy);
-    const b: Barrido = { pintura, difuminadoPx: def.difuminadoPx, origen, eje: [dx / largo, dy / largo], largo, inicio: null, progreso: 1, claves: [] };
+    const b: Barrido = { pintura, difuminadoPx: def.difuminadoPx, color: def.color, origen, eje: [dx / largo, dy / largo], largo, inicio: null, progreso: 1, claves: [] };
     const recortar = (e: BaseEvent | Event) => this.recortar(b, e as RenderEvent);
     const restaurar = (e: BaseEvent | Event) => {
       const evento = e as RenderEvent;
@@ -255,7 +259,15 @@ export class BarridoPinturas {
     if (!ctx) return;
     ctx.save();
     const esPintura = e.target === b.pintura;
-    if (esPintura) ctx.filter = `blur(${b.difuminadoPx * e.frameState!.pixelRatio}px)`;
+    if (esPintura) {
+      const px = b.difuminadoPx * e.frameState!.pixelRatio;
+      if (SOPORTA_FILTRO) {
+        ctx.filter = `blur(${px}px)`;
+      } else {
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = px * 2;
+      }
+    }
     if (b.progreso >= 1) return;
     if (!esPintura) {
       // El nombre no se recorta: aparece con un fundido en el último tramo del barrido
@@ -280,6 +292,7 @@ export class BarridoPinturas {
     degradado.addColorStop(0, 'rgba(0, 0, 0, 0)');
     degradado.addColorStop(1, 'rgba(0, 0, 0, 1)');
     ctx.filter = 'none';
+    ctx.shadowBlur = 0; // La sombra del borde suave no debe aplicarse al borrado
     ctx.globalCompositeOperation = 'destination-out'; // Borra la pintura según el degradado
     ctx.fillStyle = degradado;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
