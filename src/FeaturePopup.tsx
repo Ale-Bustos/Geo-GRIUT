@@ -8,7 +8,15 @@ const POPUP_FIELDS = [
   { key: 'Copia_de_6', label: 'Organizaciones indígenas' },
   { key: 'Copia_de_4', label: 'Otras organizaciones' },
   { key: 'Copia_de_5', label: 'Participación indígena' },
-  { key: 'Copia_de_7', label: 'Instrumento de planificación' }
+  { key: 'Copia_de_7', label: 'Instrumento de planificación' },
+  { key: 'PoliticasPublicas', label: 'Políticas públicas' },
+  { key: 'PoliticaIndigena', label: 'Política pública indígena' }
+];
+
+// Textos de la investigación de GRIUT sobre cada lugar: dos maneras de mirarlo
+const MIRADAS = [
+  { key: 'MiradaAmbiental', label: 'Mirada ambiental' },
+  { key: 'MiradaMapuche', label: 'Mirada mapuche' }
 ];
 
 // Campos con enlaces a fuentes; pueden traer varias URL separadas por espacios
@@ -41,6 +49,20 @@ const parseSources = (properties: Properties) => LINK_FIELDS
     return sources;
   }, []);
 
+// Foto o lámina del punto; el crédito dice de dónde viene
+interface Foto {
+  src: string;
+  credito: string;
+}
+
+const isFoto = (value: unknown): value is Foto => typeof value === 'object' && value !== null
+  && typeof (value as Foto).src === 'string' && typeof (value as Foto).credito === 'string';
+
+const parseFotos = (value: unknown) => (Array.isArray(value) ? value.filter(isFoto) : []);
+
+// Las láminas son del propio GRIUT; lo demás son fotos de prensa con su medio
+const creditLabel = (credito: string) => (/^lámina/i.test(credito) ? credito : 'Foto: ' + credito);
+
 // Muestra el dominio del enlace en vez de la URL completa
 const linkLabel = (url: string) => {
   try {
@@ -69,12 +91,59 @@ interface FeaturePopupProps {
   onClose: () => void;
 }
 
+const formatNumber = (value: number) => value.toLocaleString('es-CL', { maximumFractionDigits: 1 });
+
+// Polígonos del censo (manzana o localidad rural) con su porcentaje de población indígena
+const PoblacionContent = ({ properties }: { properties: Properties }) => {
+  const total = Number(properties.total_personas);
+  const indigenas = Number(properties.personas_indigenas);
+  const sinDato = isEmpty(properties.total_personas) || !Number.isFinite(total);
+  const lugar = isEmpty(properties.localidad) ? 'Manzana censal' : capitalize(String(properties.localidad).toLowerCase());
+  return (
+    <>
+      <h2 className="feature-popup-title">{lugar}</h2>
+      <dl>
+        {!isEmpty(properties.comuna) && (
+          <div>
+            <dt>Comuna</dt>
+            <dd>{capitalize(String(properties.comuna).toLowerCase())}</dd>
+          </div>
+        )}
+        <div>
+          <dt>Población indígena</dt>
+          <dd>
+            {sinDato
+              ? 'Sin dato'
+              : `${formatNumber(Number(properties.porc_indigena))} % · ${formatNumber(indigenas)} de ${formatNumber(total)} personas`}
+          </dd>
+        </div>
+      </dl>
+      <p className="feature-popup-nota">Censo 2017: personas que se consideran pertenecientes a un pueblo originario.</p>
+    </>
+  );
+};
+
 // Contenido del popup de un punto del mapa
 const FeaturePopup = ({ properties, category, onClose }: FeaturePopupProps) => {
+  if ('porc_indigena' in properties) {
+    return (
+      <div className="feature-popup" role="dialog" aria-label={category}>
+        <div className="feature-popup-banda" aria-hidden="true"></div>
+        <button type="button" className="ol-popup-closer" onClick={onClose} aria-label="Cerrar" title="Cerrar"></button>
+        <div className="feature-popup-cuerpo">
+          <p className="feature-popup-category">{category}</p>
+          <PoblacionContent properties={properties} />
+        </div>
+      </div>
+    );
+  }
+
   const title = String(properties.PopupInfo || properties.Name || properties.Nombre || '').trim();
   const fields = POPUP_FIELDS.filter(({ key }) => !isEmpty(properties[key]));
   const sources = parseSources(properties);
   const labels = linkLabels(sources);
+  const fotos = parseFotos(properties.Fotos);
+  const miradas = MIRADAS.filter(({ key }) => !isEmpty(properties[key]));
 
   return (
     <div className="feature-popup" role="dialog" aria-label={title}>
@@ -83,6 +152,21 @@ const FeaturePopup = ({ properties, category, onClose }: FeaturePopupProps) => {
       <div className="feature-popup-cuerpo">
         <p className="feature-popup-category">{String(properties.Copia_de11 || category)}</p>
         <h2 className="feature-popup-title">{title}</h2>
+        {fotos.map((foto) => (
+          <figure key={foto.src} className="feature-popup-foto">
+            {/* Tocar la imagen la abre en grande (las láminas tienen texto chico) */}
+            <a href={foto.src} target="_blank" rel="noopener noreferrer" aria-label={'Ver imagen en grande: ' + creditLabel(foto.credito)}>
+              <img src={foto.src} alt="" loading="lazy" />
+            </a>
+            <figcaption>{creditLabel(foto.credito)}</figcaption>
+          </figure>
+        ))}
+        {miradas.map(({ key, label }) => (
+          <section key={key} className="feature-popup-mirada">
+            <h3>{label}</h3>
+            <p>{String(properties[key]).trim()}</p>
+          </section>
+        ))}
         {fields.length > 0 && (
           <dl>
             {fields.map(({ key, label }) => (

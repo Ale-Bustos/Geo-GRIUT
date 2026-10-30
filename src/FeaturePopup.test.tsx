@@ -49,3 +49,34 @@ test('numera los enlaces que son del mismo sitio', () => {
   expect(screen.getByRole('link', { name: 'seia.sea.gob.cl (2)' })).toHaveAttribute('href', 'https://seia.sea.gob.cl/b');
   expect(screen.getByRole('link', { name: 'otro.cl' })).toBeInTheDocument();
 });
+
+test('muestra fotos con su crédito y las miradas del lugar', () => {
+  const properties = {
+    PopupInfo: 'Conflicto península de Hualpén',
+    MiradaAmbiental: 'Conservación versus loteo.',
+    MiradaMapuche: null,
+    Fotos: [
+      { src: '/fotos/peninsula-hualpen.webp', credito: 'Municipalidad de Hualpén' },
+      { src: '/fotos/lamina-usos-hualpen.webp', credito: 'Lámina GRIUT: usos de suelo' }
+    ]
+  };
+  render(<FeaturePopup properties={properties} category="Conflicto socioambiental" onClose={() => {}} />);
+  expect(screen.getByText('Foto: Municipalidad de Hualpén')).toBeInTheDocument();
+  expect(screen.getByText('Lámina GRIUT: usos de suelo')).toBeInTheDocument(); // Las láminas no llevan "Foto:"
+  expect(screen.getByRole('link', { name: /Municipalidad de Hualpén/ })).toHaveAttribute('href', '/fotos/peninsula-hualpen.webp');
+  expect(screen.getByRole('heading', { name: 'Mirada ambiental' })).toBeInTheDocument();
+  expect(screen.getByText('Conservación versus loteo.')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: 'Mirada mapuche' })).not.toBeInTheDocument();
+});
+
+test('muestra el porcentaje de población indígena de una manzana o localidad', () => {
+  const localidad = { comuna: 'HUALQUI', localidad: 'AGUA DE LA GLORIA', total_personas: 275, personas_indigenas: 20, porc_indigena: 7.3 };
+  const { unmount } = render(<FeaturePopup properties={localidad} category="Población indígena · localidad rural" onClose={() => {}} />);
+  expect(screen.getByRole('heading', { name: 'Agua de la gloria' })).toBeInTheDocument();
+  expect(screen.getByText('Hualqui')).toBeInTheDocument();
+  expect(screen.getByText('7,3 % · 20 de 275 personas')).toBeInTheDocument();
+  unmount();
+  render(<FeaturePopup properties={{ comuna: 'LOTA', total_personas: null, personas_indigenas: null, porc_indigena: null }} category="Población indígena · manzana" onClose={() => {}} />);
+  expect(screen.getByRole('heading', { name: 'Manzana censal' })).toBeInTheDocument();
+  expect(screen.getByText('Sin dato')).toBeInTheDocument();
+});
