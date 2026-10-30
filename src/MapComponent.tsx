@@ -6,6 +6,8 @@ import View from 'ol/View';
 import Overlay from 'ol/Overlay';
 import { defaults as defaultControls, ScaleLine } from 'ol/control';
 import type VectorLayer from 'ol/layer/Vector';
+import type VectorSource from 'ol/source/Vector';
+import { fromLonLat } from 'ol/proj';
 import Point from 'ol/geom/Point';
 import type { Coordinate } from 'ol/coordinate';
 import './css/logo.css'; // Estilos del logo de GRIUT
@@ -22,6 +24,8 @@ import { BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN, tituloNombre } f
 import { CENTRO_INICIAL, ZOOM_INICIAL, INITIAL_ROTATION } from './vista';
 import Brujula, { orientarBrujula } from './Brujula';
 import FeaturePopup from './FeaturePopup';
+import Buscador from './Buscador';
+import { CAPAS_API, type ResultadoBusqueda } from './api';
 
 // Punto del mapa cuyo popup está abierto
 interface SelectedFeature {
@@ -34,6 +38,10 @@ interface SelectedFeature {
 // de una pantalla de alta resolución es lo que más cuesta en cada cuadro; al detenerse el mapa
 // vuelve a la densidad de la pantalla para que se vea nítido
 const MOVING_PIXEL_RATIO = 1;
+
+// Acercamiento mínimo al volar a un lugar elegido en el buscador
+const ZOOM_BUSQUEDA = 14;
+const DURACION_BUSQUEDA_MS = 1000;
 
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
@@ -189,10 +197,43 @@ const MapComponent = () => {
 
   const handleClosePopup = () => setSelectedFeature(null);
 
+  // Vuela al lugar elegido en el buscador, enciende su capa y, si es un punto con popup, lo abre
+  const irALugar = (lugar: ResultadoBusqueda) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const coordenada = fromLonLat([lugar.lon, lugar.lat]);
+    const capa = findLayer(map, CAPAS_API[lugar.capa]) as VectorLayer<VectorSource> | null;
+    capa?.setVisible(true);
+    setSelectedFeature(null);
+
+    const abrirPopup = () => {
+      const fuente = capa?.getSource();
+      const punto = fuente?.getClosestFeatureToCoordinate(coordenada);
+      const geometria = punto?.getGeometry();
+      if (!capa || !punto || !isPopupLayer(capa) || !(geometria instanceof Point)) return;
+      setSelectedFeature({ properties: punto.getProperties(), category: capa.get('popupCategory'), coordinate: geometria.getCoordinates() });
+    };
+    const vista = map.getView();
+    vista.cancelAnimations();
+    const reducir = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    vista.animate({
+      center: coordenada,
+      zoom: Math.max(vista.getZoom() ?? 0, ZOOM_BUSQUEDA),
+      duration: reducir ? 0 : DURACION_BUSQUEDA_MS
+    }, (completa) => {
+      if (!completa) return;
+      // Una capa recién encendida aún puede estar cargando sus puntos
+      const fuente = capa?.getSource();
+      if (fuente && fuente.getFeatures().length === 0) fuente.once('featuresloadend', abrirPopup);
+      else abrirPopup();
+    });
+  };
+
   return (
     <div>
       <div id="map"></div>
       <Brujula ref={compassRef} mapRef={mapRef} />
+      {!recorridoAbierto && <Buscador alElegir={irALugar} />}
       {!recorridoAbierto && (
         <button type="button" className="recorrido-boton" onClick={() => recorridoRef.current?.abrir()}
           aria-label={'Recorrido guiado: ' + RECORRIDO_TERRITORIO.titulo} title={RECORRIDO_TERRITORIO.titulo}>
