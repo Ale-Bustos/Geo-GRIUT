@@ -18,6 +18,9 @@ export interface PasoTutorial {
   icono?: string; // URL
   objetivo?: string; // Selector CSS del elemento a destacar
   objetivoMovil?: string; // Selector en celular, si es distinto
+  foto?: { src: string; credito: string };
+  glosa?: { nombre: string; significado: string }; // Nombre en mapudungun y lo que significa
+  fuente?: string; // De dónde viene lo que se cuenta
 }
 
 export interface OpcionesTutorial {
@@ -75,6 +78,13 @@ export default class TutorialMapa {
   private _saludo!: HTMLParagraphElement;
   private _titulo!: HTMLHeadingElement;
   private _texto!: HTMLDivElement;
+  private _foto!: HTMLElement;
+  private _fotoImg!: HTMLImageElement;
+  private _fotoCredito!: HTMLElement;
+  private _glosa!: HTMLParagraphElement;
+  private _glosaNombre!: HTMLSpanElement;
+  private _glosaSignificado!: HTMLSpanElement;
+  private _fuente!: HTMLParagraphElement;
   private _progreso!: HTMLDivElement;
   private _rombos: HTMLButtonElement[] = [];
   private _anterior!: HTMLButtonElement;
@@ -143,6 +153,18 @@ export default class TutorialMapa {
     this._contador.textContent = (NUMEROS[i] ? NUMEROS[i] + ' · ' : '') + 'Paso ' + (i + 1) + ' de ' + n;
     this._titulo.textContent = p.titulo || '';
     this._texto.innerHTML = p.texto || '';
+    this._foto.hidden = !p.foto;
+    if (p.foto) {
+      this._fotoImg.src = p.foto.src;
+      this._fotoCredito.textContent = 'Foto: ' + p.foto.credito;
+    } else {
+      this._fotoImg.removeAttribute('src');
+    }
+    this._glosa.hidden = !p.glosa;
+    this._glosaNombre.textContent = p.glosa?.nombre || '';
+    this._glosaSignificado.textContent = p.glosa?.significado || '';
+    this._fuente.hidden = !p.fuente;
+    this._fuente.textContent = p.fuente || '';
     if (p.icono) {
       this._icono.src = p.icono;
       this._icono.hidden = false;
@@ -196,10 +218,24 @@ export default class TutorialMapa {
     this._saludo = crear('p', 'tu-saludo');
     this._titulo = crear('h2', 'tu-titulo', { id: 'tu-titulo' });
     this._texto = crear('div', 'tu-texto', { id: 'tu-texto' });
+    this._foto = crear('figure', 'tu-foto');
+    this._fotoImg = crear('img', null, { alt: '', loading: 'lazy' });
+    this._fotoCredito = crear('figcaption');
+    this._foto.appendChild(this._fotoImg);
+    this._foto.appendChild(this._fotoCredito);
+    this._glosa = crear('p', 'tu-glosa');
+    this._glosaNombre = crear('span', 'tu-glosa-nombre', { lang: 'arn' });
+    this._glosaSignificado = crear('span', 'tu-glosa-significado');
+    this._glosa.appendChild(this._glosaNombre);
+    this._glosa.appendChild(this._glosaSignificado);
+    this._fuente = crear('p', 'tu-fuente');
     contenido.appendChild(this._icono);
     contenido.appendChild(this._saludo);
     contenido.appendChild(this._titulo);
-    contenido.appendChild(this._texto);
+    contenido.appendChild(this._glosa);
+    contenido.appendChild(this._texto); // El texto antes que la foto: en celular se lee sin desplazar
+    contenido.appendChild(this._foto);
+    contenido.appendChild(this._fuente);
     cuerpo.appendChild(contenido);
 
     const pie = crear('div', 'tu-pie');

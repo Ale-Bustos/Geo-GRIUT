@@ -62,9 +62,10 @@
 @media (max-width: 640px) {
   .tu-recorrido .tu-tarjeta {
     bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
-    max-height: 45vh;
-    max-height: 45dvh;
+    max-height: 52vh;
+    max-height: 52dvh;
   }
+  .tu-recorrido .tu-foto img { height: 96px; }
   /* Solo el texto se desplaza: el avance y los botones quedan siempre a la vista */
   .tu-recorrido .tu-tarjeta { display: flex; flex-direction: column; overflow: hidden; }
   .tu-recorrido .tu-banda { flex: none; }

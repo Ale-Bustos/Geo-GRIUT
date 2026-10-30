@@ -92,6 +92,27 @@
 .tu-texto i[lang="arn"], .tu-texto .arn { font-style: normal; font-weight: 600; color: var(--tu-kallfu); }
 .tu-texto strong { color: var(--tu-kelu); }
 
+/* Nombre en mapudungun y su significado, como una entrada de diccionario */
+.tu-glosa {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin: -2px 0 10px;
+  padding: 6px 0 6px 12px;
+  border-left: 3px solid var(--tu-kelu);
+}
+.tu-glosa-nombre { font-size: 17px; font-weight: 700; letter-spacing: 0.02em; color: var(--tu-kallfu); }
+.tu-glosa-significado { font-family: Georgia, "Times New Roman", serif; font-style: italic; font-size: 15px; color: var(--tu-texto); }
+.tu-glosa-significado::before { content: "«"; }
+.tu-glosa-significado::after { content: "»"; }
+
+.tu-foto { margin: 4px 0 6px; }
+.tu-foto img { display: block; width: 100%; height: 150px; object-fit: cover; border-radius: 10px; background: #E7E5E4; }
+.tu-foto figcaption { margin-top: 4px; font-size: 11.5px; color: var(--tu-secundario); }
+
+.tu-fuente { margin: 6px 0 0; padding-top: 6px; border-top: 1px dashed #D6D3D1; font-size: 11.5px; line-height: 1.4; color: var(--tu-secundario); }
+
 /* Avance: rombos */
 .tu-pie { margin-top: 16px; }
 .tu-progreso { display: flex; justify-content: center; gap: 10px; padding: 4px 0 2px; }

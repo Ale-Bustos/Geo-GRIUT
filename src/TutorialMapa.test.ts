@@ -60,3 +60,20 @@ test('en modo recorrido no hay velo, avisa cada paso y no se marca como visto', 
   screen.getByRole('button', { name: 'Salir del recorrido' }).click(); // También en el último paso
   expect(localStorage.getItem(CLAVE)).toBeNull();
 });
+
+test('muestra la foto, la glosa y la fuente del paso solo cuando las tiene', () => {
+  new TutorialMapa({
+    clave: CLAVE,
+    pasos: [
+      { titulo: 'Anca-lighen', texto: '', glosa: { nombre: 'Anca-lighen', significado: 'cuerpo de plata' }, foto: { src: '/fotos/x.webp', credito: 'GRIUT' }, fuente: 'Asta-Buruaga (1899)' },
+      { titulo: 'Sin extras', texto: '' }
+    ]
+  }).abrir();
+  expect(screen.getByText('cuerpo de plata')).toBeVisible();
+  expect(screen.getByText('Foto: GRIUT')).toBeVisible();
+  expect(screen.getByText('Asta-Buruaga (1899)')).toBeVisible();
+  screen.getByRole('button', { name: 'Siguiente' }).click();
+  expect(screen.queryByText('cuerpo de plata')).not.toBeInTheDocument();
+  expect(document.querySelector('.tu-foto')).not.toBeVisible();
+  expect(document.querySelector('.tu-fuente')).not.toBeVisible();
+});
