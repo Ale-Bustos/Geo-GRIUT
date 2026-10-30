@@ -32,6 +32,7 @@ import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
 import TutorialMapa from './TutorialMapa'; // Tutorial de bienvenida
 import FeaturePopup from './FeaturePopup';
+import { crearCapasNawelfuta, BarridoNawelfuta, TITULO_NAWELFUTA, TITULO_NOMBRE_NAWELFUTA, COLOR_NAWELFUTA } from './Nawelfuta';
 import simboloBrujula from './img/compass-simbolo.png'; // Símbolo del meli witran mapu, sin los nombres
 
 // Punto del mapa cuyo popup está abierto
@@ -401,37 +402,8 @@ const createLayers = () => {
   const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos', '600 15px');
   const quebradasLayer = createWaterLayer('quebradas', '#6dceff', 'Quebradas', '12px');
 
-  const nahuelbutaLayer = new VectorLayer({
-    source: new VectorSource({
-      url: '/geojson/Nahuelbuta.geojson', // URL del archivo GeoJSON
-      format: new GeoJSON()
-    }),
-    style: createCachedStyleFunction(
-      (feature) => feature.get('Nombre') || 'Nawelfuta', // Obtener el texto de la característica o usar un valor predeterminado
-      (text) => new Style({
-        text: new Text({
-          font: `90px ${LABEL_FONT_FAMILY}`, // Tamaño de la fuente
-          fill: new Fill({ color: 'green' }), // Color de relleno del texto
-          stroke: new Stroke({
-            color: 'white', // Color del borde del texto
-            width: 3 // Grosor del borde del texto
-          }),
-          text: text, // Texto que se mostrará en el mapa
-          overflow: true, // Permitir que el texto se desborde si es necesario
-          placement: 'point', // Colocación del texto: en el punto del feature
-          textAlign: 'center', // Alineación del texto: centrado
-          textBaseline: 'middle', // Baseline del texto: medio
-          rotation: -0.5, // Rotación del texto para crear efecto de arco
-          offsetY: 0 // Desplazamiento vertical del texto
-        })
-      })
-    ),
-    properties: {
-      title: 'Nahuelbuta'
-    },
-    minZoom: 11 - ZOOM_EPSILON, // Muestra la capa de Nahuelbuta si el zoom es 11 o mayor
-    ...REDRAW_WHILE_MOVING
-  });
+  // Cordillera de Nawelfuta: pintura sobre el relieve y nombre en la cumbre (ver Nawelfuta.ts)
+  const nawelfuta = crearCapasNawelfuta();
 
   const provConceLayer = createGeoServerLayer('prov_conce', new Style({
     stroke: new Stroke({
@@ -496,11 +468,12 @@ const createLayers = () => {
         puntosHistoricosLayer,
         puntosResignificacionLayer,
         esterosLayer,
-        nahuelbutaLayer,
+        nawelfuta.pintura,
         provConceLayer,
         quebradasLayer,
         riosLayer,
-        toponimosLayer
+        toponimosLayer,
+        nawelfuta.nombre // Arriba de todo, para que ninguna capa tape el nombre de la cordillera
       ]
     })
   ];
@@ -552,7 +525,7 @@ const MapComponent = () => {
           capas: [
             { capa: findLayer(map, 'Toponimia'), nombre: 'Toponimia', simbolo: { tipo: 'texto', color: '#000' } },
             { capa: findLayer(map, 'Límite Provincial'), nombre: 'Límite provincial', simbolo: { tipo: 'linea', color: '#8B4513', ancho: 1.5, guiones: '3 2' } },
-            { capa: findLayer(map, 'Nahuelbuta'), nombre: 'Nahuelbuta', simbolo: { tipo: 'texto', color: 'green' } }
+            { capa: findLayer(map, TITULO_NAWELFUTA), nombre: 'Cordillera de Nawelfuta', simbolo: { tipo: 'area', relleno: COLOR_NAWELFUTA, borde: '#6E823C' } }
           ]
         },
         {
@@ -612,6 +585,12 @@ const MapComponent = () => {
         }
       ]
     }));
+
+    // Barrido de la cordillera: empieza cuando llega el contorno y se repite al volver a encender la capa
+    const pinturaNawelfuta = findLayer(map, TITULO_NAWELFUTA) as VectorLayer | null;
+    const nombreNawelfuta = findLayer(map, TITULO_NOMBRE_NAWELFUTA) as VectorLayer | null;
+    const barridoNawelfuta = pinturaNawelfuta && nombreNawelfuta ? new BarridoNawelfuta(map, pinturaNawelfuta, nombreNawelfuta) : null;
+    pinturaNawelfuta?.getSource()?.once('featuresloadend', () => barridoNawelfuta?.iniciar());
 
     // Popup con la información de los puntos
     const popupOverlay = new Overlay({
@@ -682,6 +661,7 @@ const MapComponent = () => {
     // Tutorial de bienvenida (textos propuestos por GRIUT; el mapudungun está por validar con las comunidades)
     const tutorial = new TutorialMapa({
       clave: TUTORIAL_KEY, // Cambia el sufijo de la clave para que todos lo vuelvan a ver
+      alCerrar: () => barridoNawelfuta?.iniciar(), // El primer barrido quedó detrás del velo del tutorial
       pasos: [
         {
           saludo: 'Mari mari kom pu che',
@@ -718,6 +698,7 @@ const MapComponent = () => {
     return () => {
       clearTimeout(tutorialTimeout);
       tutorial.destruir();
+      barridoNawelfuta?.destruir();
       document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
       mapRef.current = null;

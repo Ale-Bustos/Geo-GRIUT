@@ -1,0 +1,2 @@
+/* La pintura de la cordillera se multiplica con el mapa base: el sombreado del relieve sigue a la vista */
+.nawelfuta-pintura { mix-blend-mode: multiply; }
