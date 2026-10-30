@@ -6,6 +6,8 @@
  *   de 1,5 km para unir los cordones separados por valles interiores) y eje de la cumbre.
  * - Fio-Fio Lewfu (río Biobío): superficie del agua y eje del río de OpenStreetMap; el cauce con un
  *   margen de 150 m, suavizado. El nombre va sobre el curso bajo, de Hualqui al mar.
+ * - Río Andalién: eje de la capa de ríos de GRIUT (griut.rios) como franja de 240 m, más el agua del
+ *   tramo bajo de OpenStreetMap. El nombre va sobre el tramo recto antes de Concepción.
  *
  * Al aparecer, cada pintura se descubre en 3 s en su propia dirección (la cordillera de sur a norte,
  * el río aguas abajo) y queda fija. Un único controlador (BarridoPinturas) lleva el tiempo de todas
@@ -68,6 +70,20 @@ export const FIOFIO_LEWFU: DefinicionPintura = {
   atribucion: 'Fio-Fio Lewfu: © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
   desde: [-72.59, -37.56], // Aguas abajo, hasta la desembocadura
   hasta: [-73.17, -36.815]
+};
+
+// Mismo azul que el Biobío: la hidrografía pintada se lee como una sola familia
+export const ANDALIEN: DefinicionPintura = {
+  titulo: 'Andalién',
+  url: '/geojson/Andalien.geojson',
+  color: 'rgba(43, 80, 160, 0.38)',
+  nombre: 'ANDALIÉN',
+  colorNombre: '#173F6B',
+  cursiva: true,
+  difuminadoPx: 1.5, // Río angosto: menos difuminado para que la franja no se pierda
+  atribucion: 'Andalién (tramo bajo): © colaboradores de <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+  desde: [-72.847, -36.812], // Aguas abajo, de oriente a la bahía de Concepción
+  hasta: [-73.044, -36.763]
 };
 
 export const tituloNombre = (def: DefinicionPintura) => def.titulo + ' (nombre)';
