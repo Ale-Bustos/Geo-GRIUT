@@ -32,7 +32,7 @@ import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
 import TutorialMapa from './TutorialMapa'; // Tutorial de bienvenida
 import FeaturePopup from './FeaturePopup';
-import { crearCapasNawelfuta, BarridoNawelfuta, TITULO_NAWELFUTA, TITULO_NOMBRE_NAWELFUTA, COLOR_NAWELFUTA } from './Nawelfuta';
+import { crearPintura, BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, tituloNombre, type DefinicionPintura } from './PinturaTerritorio';
 import simboloBrujula from './img/compass-simbolo.png'; // Símbolo del meli witran mapu, sin los nombres
 
 // Punto del mapa cuyo popup está abierto
@@ -402,8 +402,10 @@ const createLayers = () => {
   const riosLayer = createWaterLayer('rios', '#6dceff', 'Ríos', '600 15px');
   const quebradasLayer = createWaterLayer('quebradas', '#6dceff', 'Quebradas', '12px');
 
-  // Cordillera de Nawelfuta: pintura sobre el relieve y nombre en la cumbre (ver Nawelfuta.ts)
-  const nawelfuta = crearCapasNawelfuta();
+  // Cordillera de Nawelfuta y río Fio-Fio Lewfu: pintura sobre el relieve y nombre en la cumbre
+  // o el cauce (ver PinturaTerritorio.ts)
+  const nawelfuta = crearPintura(NAWELFUTA);
+  const fiofio = crearPintura(FIOFIO_LEWFU);
 
   const provConceLayer = createGeoServerLayer('prov_conce', new Style({
     stroke: new Stroke({
@@ -419,7 +421,8 @@ const createLayers = () => {
       format: new GeoJSON()
     }),
     style: createCachedStyleFunction(
-      (feature) => feature.get('Name'),
+      // El río ya lleva su nombre a lo largo del cauce (pintura del territorio): no se repite aquí
+      (feature) => (feature.get('Name') === 'Fio-Fio Lewfu' ? undefined : feature.get('Name')),
       (text) => new Style({
         text: new Text({
           font: `bold 16px ${LABEL_FONT_FAMILY}`, // Fuente en negritas y tamaño de 16px
@@ -469,11 +472,14 @@ const createLayers = () => {
         puntosResignificacionLayer,
         esterosLayer,
         nawelfuta.pintura,
+        fiofio.pintura,
         provConceLayer,
         quebradasLayer,
         riosLayer,
         toponimosLayer,
-        nawelfuta.nombre // Arriba de todo, para que ninguna capa tape el nombre de la cordillera
+        // Arriba de todo, para que ninguna capa tape los nombres de la cordillera y del río
+        nawelfuta.nombre,
+        fiofio.nombre
       ]
     })
   ];
@@ -525,12 +531,13 @@ const MapComponent = () => {
           capas: [
             { capa: findLayer(map, 'Toponimia'), nombre: 'Toponimia', simbolo: { tipo: 'texto', color: '#000' } },
             { capa: findLayer(map, 'Límite Provincial'), nombre: 'Límite provincial', simbolo: { tipo: 'linea', color: '#8B4513', ancho: 1.5, guiones: '3 2' } },
-            { capa: findLayer(map, TITULO_NAWELFUTA), nombre: 'Cordillera de Nawelfuta', simbolo: { tipo: 'area', relleno: COLOR_NAWELFUTA, borde: '#6E823C' } }
+            { capa: findLayer(map, NAWELFUTA.titulo), nombre: 'Cordillera de Nawelfuta', simbolo: { tipo: 'area', relleno: NAWELFUTA.color, borde: '#6E823C' } }
           ]
         },
         {
           titulo: 'Hidrografía',
           capas: [
+            { capa: findLayer(map, FIOFIO_LEWFU.titulo), nombre: 'Fio-Fio Lewfu (río Biobío)', simbolo: { tipo: 'area', relleno: FIOFIO_LEWFU.color, borde: '#2B5090' } },
             { capa: findLayer(map, 'Ríos'), nombre: 'Ríos', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Esteros'), nombre: 'Esteros', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Quebradas'), nombre: 'Quebradas', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } }
@@ -587,10 +594,15 @@ const MapComponent = () => {
     }));
 
     // Barrido de la cordillera: empieza cuando llega el contorno y se repite al volver a encender la capa
-    const pinturaNawelfuta = findLayer(map, TITULO_NAWELFUTA) as VectorLayer | null;
-    const nombreNawelfuta = findLayer(map, TITULO_NOMBRE_NAWELFUTA) as VectorLayer | null;
-    const barridoNawelfuta = pinturaNawelfuta && nombreNawelfuta ? new BarridoNawelfuta(map, pinturaNawelfuta, nombreNawelfuta) : null;
-    pinturaNawelfuta?.getSource()?.once('featuresloadend', () => barridoNawelfuta?.iniciar());
+    // Un solo controlador para todos los barridos; cada pintura empieza cuando llega su geometría
+    const barridos = new BarridoPinturas(map);
+    [NAWELFUTA, FIOFIO_LEWFU].forEach((def: DefinicionPintura) => {
+      const pintura = findLayer(map, def.titulo) as VectorLayer | null;
+      const nombre = findLayer(map, tituloNombre(def)) as VectorLayer | null;
+      if (!pintura || !nombre) return;
+      barridos.registrar(def, pintura, nombre);
+      pintura.getSource()?.once('featuresloadend', () => barridos.iniciar(pintura));
+    });
 
     // Popup con la información de los puntos
     const popupOverlay = new Overlay({
@@ -661,7 +673,7 @@ const MapComponent = () => {
     // Tutorial de bienvenida (textos propuestos por GRIUT; el mapudungun está por validar con las comunidades)
     const tutorial = new TutorialMapa({
       clave: TUTORIAL_KEY, // Cambia el sufijo de la clave para que todos lo vuelvan a ver
-      alCerrar: () => barridoNawelfuta?.iniciar(), // El primer barrido quedó detrás del velo del tutorial
+      alCerrar: () => barridos.iniciar(), // Los primeros barridos quedaron detrás del velo del tutorial
       pasos: [
         {
           saludo: 'Mari mari kom pu che',
@@ -698,7 +710,7 @@ const MapComponent = () => {
     return () => {
       clearTimeout(tutorialTimeout);
       tutorial.destruir();
-      barridoNawelfuta?.destruir();
+      barridos.destruir();
       document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
       mapRef.current = null;
