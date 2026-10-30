@@ -42,3 +42,21 @@ test('destruir quita la ventana sin marcarla como vista', () => {
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(localStorage.getItem(CLAVE)).toBeNull();
 });
+
+test('en modo recorrido no hay velo, avisa cada paso y no se marca como visto', () => {
+  const pasos: number[] = [];
+  const recorrido = new TutorialMapa({
+    clave: CLAVE,
+    modo: 'recorrido',
+    textoSaltar: 'Salir del recorrido',
+    alCambiar: (i) => pasos.push(i),
+    pasos: [{ titulo: 'Paso uno', texto: '' }, { titulo: 'Paso dos', texto: '' }]
+  });
+  recorrido.abrir();
+  expect(document.querySelector('.tu-velo')).toBeNull();
+  expect(screen.getByRole('dialog', { name: 'Paso uno' })).toHaveAttribute('aria-modal', 'false');
+  screen.getByRole('button', { name: 'Siguiente' }).click();
+  expect(pasos).toEqual([0, 1]);
+  screen.getByRole('button', { name: 'Salir del recorrido' }).click(); // También en el último paso
+  expect(localStorage.getItem(CLAVE)).toBeNull();
+});

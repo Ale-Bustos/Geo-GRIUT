@@ -12,9 +12,12 @@ import './css/logo.css'; // Estilos del logo de GRIUT
 import './css/popup.css'; // Estilos del popup de los puntos
 import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
+import './css/recorrido.css'; // Botón y tarjeta del recorrido guiado
 import { createLayers, findLayer, isPopupLayer } from './capas';
 import { crearSelectorCapas } from './configSelector';
 import { crearTutorial } from './configTutorial';
+import Recorrido from './Recorrido';
+import { RECORRIDO_TERRITORIO } from './configRecorrido';
 import { BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN, tituloNombre } from './PinturaTerritorio';
 import { CENTRO_INICIAL, ZOOM_INICIAL, INITIAL_ROTATION } from './vista';
 import Brujula, { orientarBrujula } from './Brujula';
@@ -35,7 +38,7 @@ const MOVING_PIXEL_RATIO = 1;
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
 
-// Componente del mapa: crea el mapa y conecta capas, selector, pinturas, popup, tutorial y brújula
+// Componente del mapa: crea el mapa y conecta capas, selector, pinturas, popup, tutorial, recorrido y brújula
 const MapComponent = () => {
   const mapRef = useRef<Map | null>(null); // Referencia al mapa
   const compassRef = useRef<HTMLButtonElement>(null); // Referencia a la brújula
@@ -46,6 +49,8 @@ const MapComponent = () => {
     return element;
   });
   const [selectedFeature, setSelectedFeature] = useState<SelectedFeature | null>(null); // Punto cuyo popup está abierto
+  const recorridoRef = useRef<Recorrido | null>(null);
+  const [recorridoAbierto, setRecorridoAbierto] = useState(false);
 
   useEffect(() => {
     const map = new Map({
@@ -142,15 +147,28 @@ const MapComponent = () => {
     map.getView().on('change:rotation', updateCompass);
     updateCompass(); // Orienta la brújula según la rotación inicial del mapa
 
+    // Recorrido guiado (ver configRecorrido.ts); cada capítulo cierra el popup del anterior
+    const recorrido = new Recorrido(map, RECORRIDO_TERRITORIO, {
+      alAbrir: () => setRecorridoAbierto(true),
+      alCerrar: () => setRecorridoAbierto(false),
+      alCambiar: closePopup
+    });
+    recorridoRef.current = recorrido;
+
     // Tutorial de bienvenida (ver configTutorial.ts); los primeros barridos quedaron detrás de su velo
     const tutorial = crearTutorial(() => barridos.iniciar());
-    // Espera a que el mapa y el selector de capas estén dibujados para destacarlos
-    const tutorialTimeout = setTimeout(() => tutorial.iniciar(), 1000);
+    // Espera a que el mapa y el selector de capas estén dibujados para destacarlos. Si el enlace
+    // apunta a un capítulo del recorrido, se abre ese capítulo en vez del tutorial
+    const tutorialTimeout = setTimeout(() => {
+      if (!recorrido.abrirDesdeUrl()) tutorial.iniciar();
+    }, 1000);
 
     // Limpieza al desmontar el componente
     return () => {
       clearTimeout(tutorialTimeout);
       tutorial.destruir();
+      recorrido.destruir();
+      recorridoRef.current = null;
       barridos.destruir();
       document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
@@ -164,12 +182,29 @@ const MapComponent = () => {
     popupOverlayRef.current?.setPosition(selectedFeature ? selectedFeature.coordinate : undefined);
   }, [selectedFeature]);
 
+  // Mientras dura el recorrido se ocultan los controles que la tarjeta taparía (ver recorrido.css)
+  useEffect(() => {
+    document.body.classList.toggle('en-recorrido', recorridoAbierto);
+  }, [recorridoAbierto]);
+
   const handleClosePopup = () => setSelectedFeature(null);
 
   return (
     <div>
       <div id="map"></div>
       <Brujula ref={compassRef} mapRef={mapRef} />
+      {!recorridoAbierto && (
+        <button type="button" className="recorrido-boton" onClick={() => recorridoRef.current?.abrir()}
+          aria-label={'Recorrido guiado: ' + RECORRIDO_TERRITORIO.titulo} title={RECORRIDO_TERRITORIO.titulo}>
+          {/* Camino entre dos puntos */}
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+            <circle cx="6" cy="18" r="2.5" fill="currentColor" />
+            <path d="M18 3.5a3.5 3.5 0 0 0-3.5 3.5c0 2.6 3.5 6 3.5 6s3.5-3.4 3.5-6A3.5 3.5 0 0 0 18 3.5z" fill="currentColor" />
+            <path d="M8.5 18h6a3 3 0 0 0 0-6h-5a3 3 0 0 1 0-6h2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeDasharray="2.5 2.5" />
+          </svg>
+          <span className="recorrido-boton-texto">Recorrer el territorio</span>
+        </button>
+      )}
       <div className="griut-logo">
         <img src="logo01.png" alt="Logo GRIUT" />
         <div><b>Grupo de Estudios Interculturales<br />Urbanos y Territoriales</b></div>

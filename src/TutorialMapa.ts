@@ -6,6 +6,9 @@
  *   tutorial.iniciar();   // se muestra solo la primera vez
  *   tutorial.abrir();     // vuelve a mostrarlo (p. ej. desde un botón "?")
  *   tutorial.destruir();  // quita la ventana y sus eventos (al desmontar el mapa)
+ *
+ * Con modo 'recorrido' la misma tarjeta guía un relato sobre el mapa: sin velo (el mapa sigue
+ * visible y se puede tocar), sin recordar si ya se vio y avisando cada cambio de paso (alCambiar).
  */
 
 export interface PasoTutorial {
@@ -23,6 +26,9 @@ export interface OpcionesTutorial {
   textoFinal?: string;
   contenedor?: HTMLElement;
   alCerrar?: (indice: number) => void;
+  alCambiar?: (indice: number) => void; // Se llama cada vez que se muestra un paso
+  modo?: 'tutorial' | 'recorrido';
+  textoSaltar?: string;
 }
 
 // Números en mapudungun (1–10) para el contador de pasos
@@ -55,6 +61,7 @@ export default class TutorialMapa {
   private opciones: OpcionesTutorial;
   private pasos: PasoTutorial[];
   private clave: string;
+  private recorrido: boolean;
   indice = 0;
   private _abierto = false;
   private _foco: Element | null = null;
@@ -77,6 +84,16 @@ export default class TutorialMapa {
     this.opciones = opciones;
     this.pasos = opciones.pasos || [];
     this.clave = opciones.clave || 'tutorialMapa.visto';
+    this.recorrido = opciones.modo === 'recorrido';
+  }
+
+  get abierto() {
+    return this._abierto;
+  }
+
+  /** La tarjeta, para que quien la use sepa qué parte de la pantalla tapa. */
+  get tarjeta(): HTMLElement | null {
+    return this._raiz ? this._tarjeta : null;
   }
 
   /** Muestra el tutorial si esta persona aún no lo ha visto. */
@@ -101,7 +118,7 @@ export default class TutorialMapa {
     this._abierto = false;
     this._raiz.hidden = true;
     this._raiz.classList.remove('tu-con-objetivo');
-    guardar(this.clave, '1');
+    if (!this.recorrido) guardar(this.clave, '1');
     this._quitarEventos();
     if (this._foco instanceof HTMLElement) this._foco.focus();
     this.opciones.alCerrar?.(this.indice);
@@ -143,7 +160,7 @@ export default class TutorialMapa {
     this._anterior.hidden = i === 0;
     const ultimo = i === n - 1;
     this._siguiente.textContent = ultimo ? (this.opciones.textoFinal || 'Comenzar a explorar') : 'Siguiente';
-    this._saltar.hidden = ultimo;
+    this._saltar.hidden = ultimo && !this.recorrido; // En el recorrido siempre se puede salir
 
     // Reinicia la animación del contenido
     this._contenido.classList.remove('tu-entra');
@@ -151,22 +168,24 @@ export default class TutorialMapa {
     this._contenido.classList.add('tu-entra');
 
     this._posicionar();
+    this.opciones.alCambiar?.(i);
   }
 
   private _construir() {
-    const raiz = (this._raiz = crear('div', 'tu'));
+    const raiz = (this._raiz = crear('div', this.recorrido ? 'tu tu-recorrido' : 'tu'));
     raiz.hidden = true;
     const velo = crear('div', 'tu-velo');
     velo.addEventListener('click', () => this.cerrar());
     this._marco = crear('div', 'tu-marco', { 'aria-hidden': 'true' });
 
-    const tarjeta = (this._tarjeta = crear('div', 'tu-tarjeta', { role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tu-titulo', 'aria-describedby': 'tu-texto' }));
+    // En el recorrido el mapa sigue disponible: la tarjeta no es modal
+    const tarjeta = (this._tarjeta = crear('div', 'tu-tarjeta', { role: 'dialog', 'aria-modal': String(!this.recorrido), 'aria-labelledby': 'tu-titulo', 'aria-describedby': 'tu-texto' }));
     tarjeta.appendChild(crear('div', 'tu-banda', { 'aria-hidden': 'true' }));
 
     const cuerpo = crear('div', 'tu-cuerpo');
     const cab = crear('div', 'tu-cabecera');
     this._contador = crear('span', 'tu-contador');
-    this._saltar = crear('button', 'tu-saltar', { type: 'button', texto: 'Saltar' });
+    this._saltar = crear('button', 'tu-saltar', { type: 'button', texto: this.opciones.textoSaltar || 'Saltar' });
     this._saltar.addEventListener('click', () => this.cerrar());
     cab.appendChild(this._contador);
     cab.appendChild(this._saltar);
@@ -184,7 +203,7 @@ export default class TutorialMapa {
     cuerpo.appendChild(contenido);
 
     const pie = crear('div', 'tu-pie');
-    this._progreso = crear('div', 'tu-progreso', { role: 'progressbar', 'aria-valuemin': '1', 'aria-valuemax': String(this.pasos.length), 'aria-label': 'Avance del tutorial' });
+    this._progreso = crear('div', 'tu-progreso', { role: 'progressbar', 'aria-valuemin': '1', 'aria-valuemax': String(this.pasos.length), 'aria-label': this.recorrido ? 'Avance del recorrido' : 'Avance del tutorial' });
     this._rombos = this.pasos.map((_, k) => {
       const r = crear('button', 'tu-rombo', { type: 'button', 'aria-label': 'Ir al paso ' + (k + 1), tabindex: '-1' });
       r.addEventListener('click', () => this.ir(k));
@@ -206,7 +225,7 @@ export default class TutorialMapa {
     cuerpo.appendChild(pie);
     tarjeta.appendChild(cuerpo);
 
-    raiz.appendChild(velo);
+    if (!this.recorrido) raiz.appendChild(velo);
     raiz.appendChild(this._marco);
     raiz.appendChild(tarjeta);
     (this.opciones.contenedor || document.body).appendChild(raiz);
@@ -220,7 +239,8 @@ export default class TutorialMapa {
 
   private _alTeclado = (e: KeyboardEvent) => {
     if (!this._abierto) return;
-    const enCampo = e.target instanceof HTMLInputElement;
+    // En el recorrido las flechas solo cambian de paso desde la tarjeta: sobre el mapa lo desplazan
+    const enCampo = e.target instanceof HTMLInputElement || (this.recorrido && !this._tarjeta.contains(document.activeElement));
     if (e.key === 'Escape') {
       e.preventDefault();
       this.cerrar();
@@ -228,7 +248,7 @@ export default class TutorialMapa {
       this.ir(this.indice + 1);
     } else if (e.key === 'ArrowLeft' && !enCampo) {
       this.ir(this.indice - 1);
-    } else if (e.key === 'Tab') {
+    } else if (e.key === 'Tab' && !this.recorrido) {
       // Mantiene el foco dentro de la ventana
       const f = Array.from(this._tarjeta.querySelectorAll('button')).filter((b) => !b.hidden && b.tabIndex >= 0);
       if (!f.length) return;

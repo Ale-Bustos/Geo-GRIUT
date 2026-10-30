@@ -1,0 +1,90 @@
+/* Recorrido guiado: botón para empezarlo y tarjeta del relato (la tarjeta es la del tutorial, ver tutorial-mapa.css) */
+
+/* Escritorio: botón con texto abajo a la izquierda, sobre la escala */
+.recorrido-boton {
+  position: absolute;
+  left: 12px;
+  bottom: 40px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 10px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #8B1E1E; /* kelü */
+  color: #FAF7F2; /* lig */
+  font: 600 14px "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  box-shadow: 0 4px 14px rgba(28, 25, 23, 0.3);
+  cursor: pointer;
+}
+.recorrido-boton:hover { background: #6E1616; }
+.recorrido-boton:focus-visible { outline: 2px solid #2B3A8C; outline-offset: 2px; }
+
+/* La tarjeta del relato no tapa el mapa: solo ella recibe toques */
+.tu-recorrido { pointer-events: none; }
+.tu-recorrido .tu-tarjeta { pointer-events: auto; }
+
+/* Escritorio: panel a la izquierda, bajo la brújula; el selector de capas queda a la derecha */
+.tu-recorrido .tu-tarjeta {
+  left: 12px;
+  top: 172px;
+  transform: none;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 184px);
+  max-height: calc(100dvh - 184px);
+}
+
+/* Celular: botón redondo bajo el de capas y tarjeta como hoja inferior que deja ver el mapa */
+@media (max-width: 640px), (max-height: 500px) {
+  .recorrido-boton {
+    left: auto;
+    right: 0.75em;
+    bottom: auto;
+    top: calc(76px + 56px); /* Bajo el botón de capas (--sc-tope + 56px) */
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+    padding: 0;
+  }
+  .recorrido-boton-texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* Mientras dura el recorrido, el selector de capas se esconde: el recorrido elige las capas */
+  .en-recorrido .sc-fab, .en-recorrido .sc-chips, .en-recorrido .sc-hoja-abierta .sc-panel { display: none; }
+}
+
+@media (max-width: 640px) {
+  .tu-recorrido .tu-tarjeta {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    max-height: 45vh;
+    max-height: 45dvh;
+  }
+  /* Solo el texto se desplaza: el avance y los botones quedan siempre a la vista */
+  .tu-recorrido .tu-tarjeta { display: flex; flex-direction: column; overflow: hidden; }
+  .tu-recorrido .tu-banda { flex: none; }
+  .tu-recorrido .tu-cuerpo { display: flex; flex-direction: column; min-height: 0; padding: 12px 18px 14px; }
+  .tu-recorrido .tu-contenido { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-top: 6px; }
+  .tu-recorrido .tu-icono { display: none; } /* El símbolo ya está en el mapa */
+  .tu-recorrido .tu-titulo { font-size: 18px; margin-bottom: 4px; }
+  .tu-recorrido .tu-texto { font-size: 14px; line-height: 1.45; }
+  .tu-recorrido .tu-pie { margin-top: 10px; }
+  .tu-recorrido .tu-acciones { margin-top: 10px; }
+}
+
+/* Celular acostado: la tarjeta va a la derecha, a todo el alto, y deja la brújula libre */
+@media (max-height: 500px) and (min-width: 641px) {
+  .tu-recorrido .tu-tarjeta {
+    left: auto;
+    right: 8px;
+    top: 8px;
+    width: min(340px, 45vw);
+    max-height: calc(100vh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+}

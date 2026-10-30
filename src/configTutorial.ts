@@ -29,6 +29,11 @@ export const crearTutorial = (alCerrar: () => void) => new TutorialMapa({
       texto: '<p>Los lugares aparecen con su nombre en mapudungun: <i lang="arn">Peguko</i> (Penco), <i lang="arn">Tralkawenu</i> (Talcahuano), <i lang="arn">Fio-Fio Lewfu</i> (río Biobío).</p>'
     },
     {
+      titulo: 'Recorre el territorio',
+      texto: '<p>Con <strong>Recorrer el territorio</strong> el mapa te guía capítulo a capítulo, del <i lang="arn">Lafkenmapu</i> a <i lang="arn">Nawelfuta</i>: viaja a cada lugar y enciende sus capas.</p>',
+      objetivo: '.recorrido-boton'
+    },
+    {
       titulo: 'Orientarse con el meli witran mapu',
       texto: '<p>Las cuatro tierras indican la orientación: <i lang="arn">Puelmapu</i> al este, <i lang="arn">Pikunmapu</i> al norte, <i lang="arn">Willimapu</i> al sur y <i lang="arn">Lafkenmapu</i> al oeste, hacia el mar. Arrastra la brújula para girar el mapa.</p><p>Pewkallal, ¡buen recorrido!</p>',
       objetivo: '#compass'
