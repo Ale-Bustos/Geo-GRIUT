@@ -70,13 +70,22 @@ test('muestra fotos con su crédito y las miradas del lugar', () => {
 });
 
 test('muestra el porcentaje de población indígena de una manzana o localidad', () => {
-  const localidad = { comuna: 'HUALQUI', localidad: 'AGUA DE LA GLORIA', total_personas: 275, personas_indigenas: 20, porc_indigena: 7.3 };
+  const localidad = { censo: 2024, comuna: 'HUALQUI', localidad: 'AGUA DE LA GLORIA', total_personas: 275, personas_indigenas: 20, porc_indigena: 7.3,
+    lengua_indigena: 4, total_personas_2017: 250, personas_indigenas_2017: 10, porc_indigena_2017: 4 };
   const { unmount } = render(<FeaturePopup properties={localidad} category="Población indígena · localidad rural" onClose={() => {}} />);
   expect(screen.getByRole('heading', { name: 'Agua de la gloria' })).toBeInTheDocument();
   expect(screen.getByText('Hualqui')).toBeInTheDocument();
   expect(screen.getByText('7,3 % · 20 de 275 personas')).toBeInTheDocument();
+  expect(screen.getByText('4 personas')).toBeInTheDocument();
+  expect(screen.getByText('4 % · 10 de 250 personas')).toBeInTheDocument(); // Comparación con 2017
+  expect(screen.getByText(/^Censo 2024/)).toBeInTheDocument();
   unmount();
-  render(<FeaturePopup properties={{ comuna: 'LOTA', total_personas: null, personas_indigenas: null, porc_indigena: null }} category="Población indígena · manzana" onClose={() => {}} />);
+  // Las teselas omiten los campos vacíos: una manzana con la cifra reservada solo trae el total
+  const { unmount: unmount2 } = render(<FeaturePopup properties={{ censo: 2024, comuna: 'LOTA', total_personas: 18, reservado: 1 }} category="Población indígena · manzana" onClose={() => {}} />);
   expect(screen.getByRole('heading', { name: 'Manzana censal' })).toBeInTheDocument();
-  expect(screen.getByText('Sin dato')).toBeInTheDocument();
+  expect(screen.getByText('Dato reservado por el INE · 18 personas')).toBeInTheDocument();
+  expect(screen.queryByText('Censo 2017')).not.toBeInTheDocument();
+  unmount2();
+  render(<FeaturePopup properties={{ censo: 2024, comuna: 'LOTA', total_personas: 0, reservado: 0 }} category="Población indígena · manzana" onClose={() => {}} />);
+  expect(screen.getByText('Sin habitantes censados')).toBeInTheDocument();
 });
