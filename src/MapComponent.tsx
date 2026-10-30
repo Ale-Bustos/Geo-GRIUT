@@ -32,7 +32,7 @@ import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
 import TutorialMapa from './TutorialMapa'; // Tutorial de bienvenida
 import FeaturePopup from './FeaturePopup';
-import { crearPintura, BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, tituloNombre, type DefinicionPintura } from './PinturaTerritorio';
+import { crearPintura, BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN, tituloNombre, type DefinicionPintura } from './PinturaTerritorio';
 import simboloBrujula from './img/compass-simbolo.png'; // Símbolo del meli witran mapu, sin los nombres
 
 // Punto del mapa cuyo popup está abierto
@@ -284,6 +284,10 @@ const simplifyForLabel = (feature: FeatureLike, resolution: number) => {
   return new MultiLineString(simplified, 'XY', simplifiedEnds);
 };
 
+// Nombres que ya van escritos en una pintura del territorio (PinturaTerritorio.ts): ni la capa de ríos
+// ni la toponimia los repiten
+const NOMBRES_PINTADOS = new Set(['Fio-Fio Lewfu', 'Anca-lighen', 'Río Andalien']);
+
 // labelFont: tamaño y peso del nombre, para que los ríos destaquen sobre esteros y quebradas
 const createWaterLayer = (layerName: string, color: string, title: string, labelFont: string) => {
   const lineStyle = new Style({
@@ -297,7 +301,7 @@ const createWaterLayer = (layerName: string, color: string, title: string, label
     source: createGeoServerTileSource(layerName),
     style: (feature, resolution) => {
       const name = feature.get('Nombre');
-      if (!name) {
+      if (!name || NOMBRES_PINTADOS.has(name)) {
         return lineStyle;
       }
       if (!labels[name]) {
@@ -406,6 +410,7 @@ const createLayers = () => {
   // o el cauce (ver PinturaTerritorio.ts)
   const nawelfuta = crearPintura(NAWELFUTA);
   const fiofio = crearPintura(FIOFIO_LEWFU);
+  const ancaLighen = crearPintura(ANCA_LIGHEN);
 
   const provConceLayer = createGeoServerLayer('prov_conce', new Style({
     stroke: new Stroke({
@@ -421,8 +426,7 @@ const createLayers = () => {
       format: new GeoJSON()
     }),
     style: createCachedStyleFunction(
-      // El río ya lleva su nombre a lo largo del cauce (pintura del territorio): no se repite aquí
-      (feature) => (feature.get('Name') === 'Fio-Fio Lewfu' ? undefined : feature.get('Name')),
+      (feature) => (NOMBRES_PINTADOS.has(feature.get('Name')) ? undefined : feature.get('Name')),
       (text) => new Style({
         text: new Text({
           font: `bold 16px ${LABEL_FONT_FAMILY}`, // Fuente en negritas y tamaño de 16px
@@ -473,13 +477,15 @@ const createLayers = () => {
         esterosLayer,
         nawelfuta.pintura,
         fiofio.pintura,
+        ancaLighen.pintura,
         provConceLayer,
         quebradasLayer,
         riosLayer,
         toponimosLayer,
         // Arriba de todo, para que ninguna capa tape los nombres de la cordillera y del río
         nawelfuta.nombre,
-        fiofio.nombre
+        fiofio.nombre,
+        ancaLighen.nombre
       ]
     })
   ];
@@ -538,6 +544,7 @@ const MapComponent = () => {
           titulo: 'Hidrografía',
           capas: [
             { capa: findLayer(map, FIOFIO_LEWFU.titulo), nombre: 'Fio-Fio Lewfu (río Biobío)', simbolo: { tipo: 'area', relleno: FIOFIO_LEWFU.color, borde: '#2B5090' } },
+            { capa: findLayer(map, ANCA_LIGHEN.titulo), nombre: 'Anca-lighen', simbolo: { tipo: 'area', relleno: ANCA_LIGHEN.color, borde: '#2B5090' } },
             { capa: findLayer(map, 'Ríos'), nombre: 'Ríos', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Esteros'), nombre: 'Esteros', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } },
             { capa: findLayer(map, 'Quebradas'), nombre: 'Quebradas', simbolo: { tipo: 'onda', color: '#6dceff', ancho: 2 } }
@@ -596,7 +603,7 @@ const MapComponent = () => {
     // Barrido de la cordillera: empieza cuando llega el contorno y se repite al volver a encender la capa
     // Un solo controlador para todos los barridos; cada pintura empieza cuando llega su geometría
     const barridos = new BarridoPinturas(map);
-    [NAWELFUTA, FIOFIO_LEWFU].forEach((def: DefinicionPintura) => {
+    [NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN].forEach((def: DefinicionPintura) => {
       const pintura = findLayer(map, def.titulo) as VectorLayer | null;
       const nombre = findLayer(map, tituloNombre(def)) as VectorLayer | null;
       if (!pintura || !nombre) return;
