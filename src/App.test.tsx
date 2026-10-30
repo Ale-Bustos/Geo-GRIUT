@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
-import { TUTORIAL_KEY } from './MapComponent';
+import { TUTORIAL_KEY } from './configTutorial';
 
 beforeEach(() => {
   localStorage.setItem(TUTORIAL_KEY, '1'); // Evita que el tutorial se inicie durante los tests

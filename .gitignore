@@ -22,3 +22,7 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Material de trabajo local (datos originales y la biblioteca de simbología de la que se adaptó el código)
+/asets
+/simbologia_mapa_web
