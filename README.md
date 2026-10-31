@@ -21,6 +21,8 @@ Construido con [React](https://react.dev), [TypeScript](https://www.typescriptla
 | `npm run lint` | Revisa el código con ESLint |
 | `npm run typecheck` | Revisa los tipos con TypeScript |
 
+El backend en Go tiene sus propios comandos: ver [`backend/README.md`](backend/README.md).
+
 ## Estructura
 
 - `src/MapComponent.tsx`: mapa, capas, leyenda, brújula y tutorial.
@@ -28,6 +30,8 @@ Construido con [React](https://react.dev), [TypeScript](https://www.typescriptla
 - `src/SelectorCapas.ts`: selector de capas con leyenda (adaptado de `simbologia_mapa_web/`).
 - `src/TutorialMapa.ts`: tutorial de bienvenida (adaptado de `simbologia_mapa_web/`).
 - `public/geojson/`: capas vectoriales (ríos, esteros, quebradas, límite provincial, toponimia, conflictos, puntos históricos y de resignificación).
+- `src/Buscador.tsx` y `src/api.ts`: buscador de lugares que consulta la API de GRIUT.
+- `backend/`: API en Go sobre PostGIS (ver `backend/README.md`).
 - `vercel.json`: configuración de despliegue.
 
 ## Datos

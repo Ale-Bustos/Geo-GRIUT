@@ -1,0 +1,6 @@
+# Solo el código Go entra a la imagen
+*
+!go.mod
+!go.sum
+!cmd/
+!internal/
