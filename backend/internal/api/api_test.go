@@ -20,6 +20,7 @@ type almacenFalso struct {
 	limite    int
 	elementos map[int]*datos.Elemento
 	pánico    bool
+	teselas   int // Teselas pedidas a la base
 }
 
 func (a *almacenFalso) Salud(context.Context) error { return a.errSalud }
@@ -44,6 +45,11 @@ func (a *almacenFalso) Elemento(_ context.Context, capa string, id int) (*datos.
 
 func (a *almacenFalso) Comunas(context.Context) ([]datos.Comuna, error) {
 	return nil, errors.New("sin tablas")
+}
+
+func (a *almacenFalso) Tesela(_ context.Context, capa string, z, x, y int) ([]byte, error) {
+	a.teselas++
+	return []byte(capa + "-mvt"), nil
 }
 
 func servidorDePrueba(a *almacenFalso) http.Handler {
@@ -169,5 +175,69 @@ func TestCORS(t *testing.T) {
 	rec := pedir(t, h, "OPTIONS", "/api/buscar", map[string]string{"Origin": "https://geo-griut.vercel.app"})
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("preflight: estado %d", rec.Code)
+	}
+}
+
+func TestTeselaValida(t *testing.T) {
+	h := servidorDePrueba(&almacenFalso{})
+	casos := map[string]int{
+		"/api/teselas/rios/12/1216/2513.pbf": http.StatusOK,
+		"/api/teselas/rios/0/0/0.pbf":        http.StatusOK,
+		"/api/teselas/rios/12/1216/2513":     http.StatusNotFound, // Sin .pbf
+		"/api/teselas/conflictos/12/1/1.pbf": http.StatusNotFound, // No es capa de teselas
+		"/api/teselas/rios/17/1/1.pbf":       http.StatusNotFound, // Más allá del zoom máximo
+		"/api/teselas/rios/-1/0/0.pbf":       http.StatusNotFound,
+		"/api/teselas/rios/2/4/0.pbf":        http.StatusNotFound, // x fuera de la grilla (4 columnas)
+		"/api/teselas/rios/2/0/4.pbf":        http.StatusNotFound,
+		"/api/teselas/rios/2/a/0.pbf":        http.StatusNotFound,
+	}
+	for ruta, estado := range casos {
+		if rec := pedir(t, h, "GET", ruta, nil); rec.Code != estado {
+			t.Errorf("%s: estado %d, se esperaba %d", ruta, rec.Code, estado)
+		}
+	}
+}
+
+func TestTeselaCacheYEtag(t *testing.T) {
+	a := &almacenFalso{}
+	h := servidorDePrueba(a)
+	ruta := "/api/teselas/rios/12/1216/2513.pbf"
+	rec := pedir(t, h, "GET", ruta, nil)
+	if rec.Body.String() != "rios-mvt" || rec.Header().Get("Content-Type") != "application/vnd.mapbox-vector-tile" {
+		t.Fatalf("respuesta inesperada: %q %q", rec.Body, rec.Header().Get("Content-Type"))
+	}
+	etag := rec.Header().Get("ETag")
+	if etag == "" || rec.Header().Get("Cache-Control") != cacheTesela {
+		t.Errorf("faltan ETag o Cache-Control: %v", rec.Header())
+	}
+	if rec = pedir(t, h, "GET", ruta, nil); rec.Body.String() != "rios-mvt" || a.teselas != 1 {
+		t.Errorf("la segunda vez debía salir de la caché (pedidas a la base: %d)", a.teselas)
+	}
+	if rec = pedir(t, h, "GET", ruta, map[string]string{"If-None-Match": etag}); rec.Code != http.StatusNotModified || rec.Body.Len() != 0 {
+		t.Errorf("con el mismo ETag se esperaba 304 vacío y llegó %d", rec.Code)
+	}
+}
+
+func TestCacheTeselasDescartaLaMenosUsada(t *testing.T) {
+	tesela := func(clave string) *teselaGuardada { return &teselaGuardada{clave: clave, datos: make([]byte, 744)} } // 1000 con el costo fijo
+	c := nuevoCacheTeselas(2500)
+	c.guardar(tesela("a"))
+	c.guardar(tesela("b"))
+	c.obtener("a") // "b" queda como la menos usada
+	c.guardar(tesela("c"))
+	if _, ok := c.obtener("b"); ok {
+		t.Error("b debía salir de la caché")
+	}
+	for _, clave := range []string{"a", "c"} {
+		if _, ok := c.obtener(clave); !ok {
+			t.Errorf("%s debía seguir en la caché", clave)
+		}
+	}
+	if c.usado != 2000 {
+		t.Errorf("usado = %d, se esperaba 2000", c.usado)
+	}
+	c.guardar(&teselaGuardada{clave: "grande", datos: make([]byte, 5000)})
+	if _, ok := c.obtener("grande"); ok || c.usado != 2000 {
+		t.Error("una tesela más grande que toda la caché no se guarda")
 	}
 }

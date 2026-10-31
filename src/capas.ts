@@ -16,7 +16,11 @@ import { Style, Fill, Stroke, Circle as CircleStyle, Icon, Text } from 'ol/style
 import type ImageStyle from 'ol/style/Image';
 import type BaseLayer from 'ol/layer/Base';
 import type { FeatureLike } from 'ol/Feature';
+import type Tile from 'ol/Tile';
+import type VectorTile from 'ol/VectorTile';
+import TileState from 'ol/TileState';
 import { crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
+import { API_URL } from './api';
 
 // Token público de Mapbox para el mapa base (ver .env.example)
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -92,13 +96,45 @@ const GEOSERVER_URL = 'https://geo.myc-ingenieria.cl/geoserver';
 // Último zoom precalculado en el servidor; más cerca, OpenLayers amplía las teselas de este nivel
 const GEOSERVER_MAX_ZOOM = 16;
 
-// Fuente de teselas vectoriales (MVT) de una capa del workspace griut de GeoServer
-const createGeoServerTileSource = (layerName: string) => new VectorTileSource({
-  format: new MVT(),
-  // TMS numera las filas de abajo hacia arriba, de ahí {-y}
-  url: `${GEOSERVER_URL}/gwc/service/tms/1.0.0/griut:${layerName}@EPSG:900913@pbf/{z}/{x}/{-y}.pbf`,
-  maxZoom: GEOSERVER_MAX_ZOOM
-});
+// Capas cuyas teselas ya sirve la API de GRIUT (backend en Go, ver backend/); las demás siguen en GeoServer
+const CAPAS_TESELAS_API = new Set(['rios']);
+
+// URL de una tesela en GeoWebCache. TMS numera las filas de abajo hacia arriba, de ahí {-y}
+const geoServerTileUrl = (layerName: string, xyz = '{z}/{x}/{-y}') =>
+  `${GEOSERVER_URL}/gwc/service/tms/1.0.0/griut:${layerName}@EPSG:900913@pbf/${xyz}.pbf`;
+
+// Descarga una tesela de la API y, si la API no responde, la misma tesela de GeoServer
+const fetchOk = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  return response;
+};
+
+const loadTileWithFallback = (layerName: string, format: MVT) => (tile: Tile, url: string) => {
+  const vectorTile = tile as VectorTile<RenderFeature>;
+  vectorTile.setLoader((extent, _resolution, projection) => {
+    const [z, x, y] = vectorTile.getTileCoord();
+    fetchOk(url)
+      .catch(() => fetchOk(geoServerTileUrl(layerName, `${z}/${x}/${2 ** z - 1 - y}`)))
+      .then((response) => response.arrayBuffer())
+      .then((data) => vectorTile.setFeatures(format.readFeatures(data, { extent, featureProjection: projection })))
+      .catch(() => vectorTile.setState(TileState.ERROR));
+  });
+};
+
+// Fuente de teselas vectoriales (MVT) de una capa del esquema griut
+const createGeoServerTileSource = (layerName: string) => {
+  const format = new MVT();
+  if (!CAPAS_TESELAS_API.has(layerName)) {
+    return new VectorTileSource({ format, url: geoServerTileUrl(layerName), maxZoom: GEOSERVER_MAX_ZOOM });
+  }
+  return new VectorTileSource({
+    format,
+    url: `${API_URL}/api/teselas/${layerName}/{z}/{x}/{y}.pbf`, // XYZ: fila 0 arriba
+    maxZoom: GEOSERVER_MAX_ZOOM,
+    tileLoadFunction: loadTileWithFallback(layerName, format)
+  });
+};
 
 // Función para crear capas de teselas vectoriales de GeoServer con estilos personalizados
 const createGeoServerLayer = (layerName: string, style: Style, title: string, visible = true) => new VectorTileLayer({

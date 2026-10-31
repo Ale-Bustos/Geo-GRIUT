@@ -59,4 +59,6 @@ type Almacen interface {
 	Buscar(ctx context.Context, q string, limite int) ([]Resultado, error)
 	Elemento(ctx context.Context, capa string, id int) (*Elemento, error)
 	Comunas(ctx context.Context) ([]Comuna, error)
+	// Tesela devuelve la tesela MVT z/x/y (esquema XYZ) de una capa de CapasTeselas; vacía si no hay nada
+	Tesela(ctx context.Context, capa string, z, x, y int) ([]byte, error)
 }

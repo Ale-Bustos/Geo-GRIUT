@@ -2,6 +2,8 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -20,6 +22,9 @@ const (
 	largoMinimo      = 2   // Letras mínimas para buscar
 	largoMaximo      = 100 // Más largo no es un nombre de lugar
 	cachePublica     = "public, max-age=300"
+	cacheTesela      = "public, max-age=86400" // Las capas cambian rara vez
+	zoomMaximo       = 16                      // Igual que GeoServer: más cerca, el mapa amplía las teselas de este nivel
+	memoriaTeselas   = 64 << 20                // 64 MB de teselas en memoria
 )
 
 // Servidor reúne las rutas de la API.
@@ -28,10 +33,11 @@ type Servidor struct {
 	version  string
 	origenes map[string]bool
 	log      *slog.Logger
+	teselas  *cacheTeselas
 }
 
 func NuevoServidor(almacen datos.Almacen, version string, origenes []string, log *slog.Logger) *Servidor {
-	s := &Servidor{almacen: almacen, version: version, origenes: map[string]bool{}, log: log}
+	s := &Servidor{almacen: almacen, version: version, origenes: map[string]bool{}, log: log, teselas: nuevoCacheTeselas(memoriaTeselas)}
 	for _, o := range origenes {
 		if o = strings.TrimSpace(o); o != "" {
 			s.origenes[o] = true
@@ -47,6 +53,7 @@ func (s *Servidor) Handler() http.Handler {
 	mux.HandleFunc("GET /api/buscar", s.buscar)
 	mux.HandleFunc("GET /api/capas/{capa}/elementos/{id}", s.elemento)
 	mux.HandleFunc("GET /api/poblacion/comunas", s.comunas)
+	mux.HandleFunc("GET /api/teselas/{capa}/{z}/{x}/{y}", s.tesela)
 	return s.recuperar(s.registrar(s.cors(mux)))
 }
 
@@ -118,6 +125,43 @@ func (s *Servidor) comunas(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", cachePublica)
 	responderJSON(w, http.StatusOK, comunas)
+}
+
+// tesela sirve /api/teselas/{capa}/{z}/{x}/{y}.pbf en esquema XYZ (fila 0 arriba)
+func (s *Servidor) tesela(w http.ResponseWriter, r *http.Request) {
+	capa := r.PathValue("capa")
+	yTexto, ok := strings.CutSuffix(r.PathValue("y"), ".pbf")
+	z, errZ := strconv.Atoi(r.PathValue("z"))
+	x, errX := strconv.Atoi(r.PathValue("x"))
+	y, errY := strconv.Atoi(yTexto)
+	if _, existe := datos.CapasTeselas[capa]; !existe || !ok || errZ != nil || errX != nil || errY != nil ||
+		z < 0 || z > zoomMaximo || x < 0 || y < 0 || x >= 1<<z || y >= 1<<z {
+		responderError(w, http.StatusNotFound, "no encontrado")
+		return
+	}
+
+	clave := capa + "/" + strconv.Itoa(z) + "/" + strconv.Itoa(x) + "/" + strconv.Itoa(y)
+	t, guardada := s.teselas.obtener(clave)
+	if !guardada {
+		mvt, err := s.almacen.Tesela(r.Context(), capa, z, x, y)
+		if err != nil {
+			s.fallo(w, r, err)
+			return
+		}
+		suma := sha256.Sum256(mvt)
+		t = &teselaGuardada{clave: clave, datos: mvt, etag: `"` + hex.EncodeToString(suma[:8]) + `"`}
+		s.teselas.guardar(t)
+	}
+
+	w.Header().Set("Cache-Control", cacheTesela)
+	w.Header().Set("ETag", t.etag)
+	if r.Header.Get("If-None-Match") == t.etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
+	w.Header().Set("Content-Type", "application/vnd.mapbox-vector-tile")
+	w.Header().Set("Content-Length", strconv.Itoa(len(t.datos)))
+	_, _ = w.Write(t.datos)
 }
 
 // fallo registra el error y responde 500 sin mostrar el detalle a quien consulta.
