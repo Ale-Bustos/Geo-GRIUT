@@ -4,6 +4,11 @@ import type Map from 'ol/Map';
 import SelectorCapas from './SelectorCapas';
 import { findLayer, POBLACION_CLASES, POBLACION_RESERVADA } from './capas';
 import { NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
+import { INTENSIDAD, TITULO_RELIEVE } from './relieve';
+
+// Gris de la ladera más sombreada, tal como lo dibuja el relieve antes de multiplicarlo con el mapa base
+const gris = Math.round(255 * (1 - INTENSIDAD)).toString(16).padStart(2, '0');
+const COLOR_SOMBRA = `#${gris}${gris}${gris}`;
 
 export const crearSelectorCapas = (map: Map) => new SelectorCapas({
   titulo: 'Capas',
@@ -13,7 +18,16 @@ export const crearSelectorCapas = (map: Map) => new SelectorCapas({
       capas: [
         { capa: findLayer(map, 'Toponimia'), nombre: 'Toponimia', simbolo: { tipo: 'texto', color: '#000' } },
         { capa: findLayer(map, 'Límite Provincial'), nombre: 'Límite provincial', simbolo: { tipo: 'linea', color: '#8B4513', ancho: 1.5, guiones: '3 2' } },
-        { capa: findLayer(map, NAWELFUTA.titulo), nombre: 'Cordillera de Nawelfuta', simbolo: { tipo: 'area', relleno: NAWELFUTA.color, borde: '#6E823C' } }
+        { capa: findLayer(map, NAWELFUTA.titulo), nombre: 'Cordillera de Nawelfuta', simbolo: { tipo: 'area', relleno: NAWELFUTA.color, borde: '#6E823C' } },
+        {
+          capa: findLayer(map, TITULO_RELIEVE),
+          nombre: 'Relieve sombreado', nombreCorto: 'Relieve',
+          simbolo: { tipo: 'area', relleno: COLOR_SOMBRA, borde: '#A8A29E' },
+          leyenda: [
+            { simbolo: { tipo: 'area', relleno: COLOR_SOMBRA, borde: '#A8A29E' }, texto: 'Ladera en sombra (luz desde Puelmapu)' },
+            { simbolo: { tipo: 'area', relleno: '#FFFFFF', borde: '#A8A29E' }, texto: 'Ladera al sol o terreno llano' }
+          ]
+        }
       ]
     },
     {

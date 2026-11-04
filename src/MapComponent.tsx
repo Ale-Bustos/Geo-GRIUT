@@ -11,6 +11,7 @@ import { fromLonLat } from 'ol/proj';
 import Point from 'ol/geom/Point';
 import type { Coordinate } from 'ol/coordinate';
 import './css/logo.css'; // Estilos del logo de GRIUT
+import './css/relieve.css'; // Mezcla del relieve sombreado
 import './css/popup.css'; // Estilos del popup de los puntos
 import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
@@ -23,6 +24,9 @@ import { RECORRIDO_TERRITORIO } from './configRecorrido';
 import { BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN, tituloNombre } from './PinturaTerritorio';
 import { CENTRO_INICIAL, ZOOM_INICIAL, INITIAL_ROTATION } from './vista';
 import Brujula, { orientarBrujula } from './Brujula';
+import { conectarRelieve, esPantallaCompacta, TITULO_RELIEVE } from './relieve';
+import { contadorFpsActivo, crearContadorFps } from './contadorFps';
+import type WebGLTileLayer from 'ol/layer/WebGLTile';
 import FeaturePopup from './FeaturePopup';
 import Buscador from './Buscador';
 import { CAPAS_API, type ResultadoBusqueda } from './api';
@@ -63,7 +67,9 @@ const MapComponent = () => {
   useEffect(() => {
     const map = new Map({
       target: 'map', // ID del elemento DOM donde se renderizará el mapa
-      layers: createLayers(),
+      // El relieve (WebGL) viene apagado en celulares: allí es lo que más baja los cuadros por segundo
+      // (ver relieve.ts); se enciende desde el selector de capas
+      layers: createLayers({ relieveVisible: !esPantallaCompacta() }),
       view: new View({
         center: CENTRO_INICIAL,
         zoom: ZOOM_INICIAL,
@@ -76,6 +82,17 @@ const MapComponent = () => {
       ])
     });
     mapRef.current = map;
+
+    // La escala del relieve sigue al zoom y a la latitud de la vista (ver relieve.ts)
+    const relieve = findLayer(map, TITULO_RELIEVE) as WebGLTileLayer | null;
+    const desconectarRelieve = relieve ? conectarRelieve(map, relieve) : () => {};
+
+    // ?fps=1: contador de cuadros por segundo para medir en el dispositivo; el mapa queda en
+    // window.geoGriut para los scripts de medición
+    const quitarContador = contadorFpsActivo()
+      ? crearContadorFps(map, () => ` · relieve ${relieve?.getVisible() ? 'sí' : 'no'}`)
+      : () => {};
+    if (contadorFpsActivo()) (window as unknown as { geoGriut?: { map: Map } }).geoGriut = { map };
 
     // Baja la densidad mientras el mapa se mueve (arrastre, zoom, giro o animación)
     map.on('movestart', () => map.setPixelRatio(Math.min(window.devicePixelRatio, MOVING_PIXEL_RATIO)));
@@ -173,6 +190,8 @@ const MapComponent = () => {
 
     // Limpieza al desmontar el componente
     return () => {
+      quitarContador();
+      desconectarRelieve();
       clearTimeout(tutorialTimeout);
       tutorial.destruir();
       recorrido.destruir();
