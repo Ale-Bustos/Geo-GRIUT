@@ -4,14 +4,6 @@
 // En desarrollo, Vite reenvía /api al backend local (ver vite.config.ts)
 export const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? '' : 'https://geo.myc-ingenieria.cl');
 
-// Capas de la API y el título de su capa en el mapa (ver capas.ts)
-export const CAPAS_API: Record<string, string> = {
-  'toponimos': 'Toponimia',
-  'puntos-historicos': 'Puntos Historicos',
-  'puntos-resignificacion': 'Puntos de Resignificación',
-  'conflictos': 'Conflictos Socio-Ambientales'
-};
-
 export interface ResultadoBusqueda {
   capa: string;
   id: number;
@@ -38,3 +30,14 @@ export const apiDisponible = async (signal?: AbortSignal) => {
 
 export const buscarLugares = (q: string, signal?: AbortSignal) =>
   pedir<ResultadoBusqueda[]>('/api/buscar?q=' + encodeURIComponent(q), signal);
+
+// Lugar cercano a otro (ver /api/lugares/{capa}/{id}/relacionados en backend/README.md)
+export interface Relacionado {
+  capa: string;
+  id: number;
+  nombre: string;
+  distancia_m: number;
+}
+
+export const pedirRelacionados = (capa: string, id: number, radioM: number, signal?: AbortSignal) =>
+  pedir<Relacionado[]>(`/api/lugares/${encodeURIComponent(capa)}/${id}/relacionados?radio=${Math.round(radioM)}`, signal);

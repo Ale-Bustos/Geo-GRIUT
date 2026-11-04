@@ -21,6 +21,7 @@ import type VectorTile from 'ol/VectorTile';
 import TileState from 'ol/TileState';
 import { crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 import { API_URL } from './api';
+import { CAPAS_LUGAR, type CapaLugar } from './lugares';
 
 // Token público de Mapbox para el mapa base (ver .env.example)
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -53,8 +54,11 @@ export const findLayer = (map: Map, title: string) => {
   return layer;
 };
 
-// Solo las capas con categoría de popup responden a los clics
+// Solo las capas con categoría de popup responden a los clics y abren la ficha (ver FichaLugar.tsx)
 export const isPopupLayer = (layer: BaseLayer) => Boolean(layer.get('popupCategory'));
+
+// Capa de lugares (ver lugares.ts) a la que pertenece una capa del mapa; sus elementos tienen id y enlace propio
+export const capaLugarDe = (layer: BaseLayer): CapaLugar | undefined => layer.get('capaLugar');
 
 // Guarda en caché los estilos por texto: OpenLayers llama a la función de estilo
 // en cada renderizado, así que crear estilos nuevos cada vez es costoso
@@ -188,13 +192,12 @@ const createCircleSymbol = (name: string, fillColor: string, strokeColor: string
   labelOffsetY: -6
 });
 
-// Capa de puntos con popup; getSymbol elige el símbolo de cada punto
+// Capa de puntos con ficha; getSymbol elige el símbolo de cada punto
 const createPointLayer = (
-  url: string,
-  title: string,
-  popupCategory: string,
+  capaLugar: CapaLugar,
   getSymbol: (feature: FeatureLike) => PointSymbol
 ) => {
+  const { url, titulo: title, categoria: popupCategory } = CAPAS_LUGAR[capaLugar];
   const cache: Record<string, Style> = {}; // Un estilo por cada combinación de símbolo y etiqueta
   return new VectorLayer({
     source: new VectorSource({
@@ -215,7 +218,8 @@ const createPointLayer = (
     },
     properties: {
       title: title,
-      popupCategory: popupCategory // Categoría que se muestra en el popup
+      popupCategory: popupCategory, // Categoría que se muestra en la ficha
+      capaLugar
     },
     visible: false,
     declutter: LABEL_DECLUTTER_GROUP,
@@ -345,24 +349,22 @@ export const createLayers = () => {
   const reweSymbol = createIconSymbol('rewe');
   const resignificacionSymbol = createCircleSymbol('resignificacion', 'purple', 'white');
 
-  const conflictosLayer = createPointLayer('/geojson/Conflictos.geojson', 'Conflictos Socio-Ambientales',
-    'Conflicto socioambiental', () => conflictoSymbol);
+  const conflictosLayer = createPointLayer('conflictos', () => conflictoSymbol);
 
   // Los puntos históricos no traen una columna de tipo, así que el símbolo se elige por el nombre
-  const puntosHistoricosLayer = createPointLayer('/geojson/Puntos_Historicos.geojson', 'Puntos Historicos',
-    'Punto histórico', (feature) => {
-      const name = String(feature.get('Name') || '');
-      if (/batalla/i.test(name)) {
-        return batallaSymbol;
-      }
-      if (/conchal|petroglifo|chemamul/i.test(name)) {
-        return sitioArqueologicoSymbol;
-      }
-      return relevanciaHistoricaSymbol;
-    });
+  const puntosHistoricosLayer = createPointLayer('puntos-historicos', (feature) => {
+    const name = String(feature.get('Name') || '');
+    if (/batalla/i.test(name)) {
+      return batallaSymbol;
+    }
+    if (/conchal|petroglifo|chemamul/i.test(name)) {
+      return sitioArqueologicoSymbol;
+    }
+    return relevanciaHistoricaSymbol;
+  });
 
-  const puntosResignificacionLayer = createPointLayer('/geojson/Puntos_Resignificacion.geojson', 'Puntos de Resignificación',
-    'Resignificación cultural', (feature) => /rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol);
+  const puntosResignificacionLayer = createPointLayer('puntos-resignificacion',
+    (feature) => (/rewe/i.test(String(feature.get('PopupInfo') || '')) ? reweSymbol : resignificacionSymbol));
 
   // Las manzanas son chicas: se muestran desde el zoom 12; las localidades rurales, desde el 10
   const poblacionManzanasLayer = createPoblacionLayer('poblacion_indigena_mz_2024', 'Población indígena por manzana',
@@ -390,7 +392,7 @@ export const createLayers = () => {
 
   const toponimosLayer = new VectorLayer({
     source: new VectorSource({
-      url: '/geojson/Toponimos.geojson', // URL del archivo GeoJSON
+      url: CAPAS_LUGAR.toponimos.url,
       format: new GeoJSON()
     }),
     style: createCachedStyleFunction(
@@ -412,7 +414,9 @@ export const createLayers = () => {
       })
     ),
     properties: {
-      title: 'Toponimia'
+      title: CAPAS_LUGAR.toponimos.titulo,
+      popupCategory: CAPAS_LUGAR.toponimos.categoria, // Al tocar un nombre se abre su ficha
+      capaLugar: 'toponimos'
     },
     minZoom: 10.5 - ZOOM_EPSILON, // Muestra la capa de Toponimia si el zoom es 10.5 o mayor
     declutter: LABEL_DECLUTTER_GROUP,

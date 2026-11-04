@@ -38,6 +38,14 @@ type Elemento struct {
 	Geometria   json.RawMessage `json:"geometry"`
 }
 
+// Relacionado es un lugar cercano a otro, con la distancia entre ambos sobre el elipsoide.
+type Relacionado struct {
+	Capa       string  `json:"capa"`
+	ID         int     `json:"id"`
+	Nombre     string  `json:"nombre"`
+	DistanciaM float64 `json:"distancia_m"`
+}
+
 // Comuna resume la población indígena de una comuna en el Censo 2024 y en el de 2017.
 // Las manzanas y localidades con dato reservado por el INE no suman personas indígenas:
 // se informan aparte para no confundirlas con cero.
@@ -58,6 +66,10 @@ type Almacen interface {
 	Salud(ctx context.Context) error
 	Buscar(ctx context.Context, q string, limite int) ([]Resultado, error)
 	Elemento(ctx context.Context, capa string, id int) (*Elemento, error)
+	// Relacionados devuelve los lugares de todas las capas de Capas a menos de radioM metros del
+	// punto capa/id (sin incluirlo), del más cercano al más lejano y como mucho limitePorCapa por
+	// capa. ErrNoEncontrado si el punto no existe.
+	Relacionados(ctx context.Context, capa string, id int, radioM float64, limitePorCapa int) ([]Relacionado, error)
 	Comunas(ctx context.Context) ([]Comuna, error)
 	// Tesela devuelve la tesela MVT z/x/y (esquema XYZ) de una capa de CapasTeselas; vacía si no hay nada
 	Tesela(ctx context.Context, capa string, z, x, y int) ([]byte, error)
