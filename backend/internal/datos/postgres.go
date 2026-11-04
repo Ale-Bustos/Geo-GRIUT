@@ -27,8 +27,9 @@ func (p *Postgres) Cerrar() { p.pool.Close() }
 
 func (p *Postgres) Salud(ctx context.Context) error { return p.pool.Ping(ctx) }
 
-// sqlBusqueda une todas las capas de puntos; se arma una sola vez desde la lista fija Capas.
-var sqlBusqueda = func() string {
+// sqlLugares une todas las capas de puntos (capa, id, nombre, geom); se arma una sola vez desde la
+// lista fija Capas, nunca con lo que llega en la URL.
+var sqlLugares = func() string {
 	nombres := make([]string, 0, len(Capas))
 	for capa := range Capas {
 		nombres = append(nombres, capa)
@@ -36,10 +37,15 @@ var sqlBusqueda = func() string {
 	sort.Strings(nombres) // SQL estable entre arranques
 	partes := make([]string, len(nombres))
 	for i, capa := range nombres {
-		partes[i] = "SELECT '" + capa + "' AS capa, id, nombre, geom FROM " + Capas[capa]
+		partes[i] = "SELECT '" + capa + "'::text AS capa, id, nombre, geom FROM " + Capas[capa]
 	}
+	return strings.Join(partes, " UNION ALL ")
+}()
+
+// sqlBusqueda busca por nombre en todas las capas de puntos.
+var sqlBusqueda = func() string {
 	// griut.normalizar quita tildes y pasa a minúsculas; el % de LIKE se escapa en escaparLike
-	return `WITH lugares AS (` + strings.Join(partes, " UNION ALL ") + `)
+	return `WITH lugares AS (` + sqlLugares + `)
 		SELECT capa, id, nombre, ST_X(geom), ST_Y(geom) FROM lugares
 		WHERE griut.normalizar(nombre) LIKE '%' || griut.normalizar($1) || '%'
 		ORDER BY griut.normalizar(nombre) LIKE griut.normalizar($1) || '%' DESC,
@@ -79,6 +85,63 @@ func (p *Postgres) Elemento(ctx context.Context, capa string, id int) (*Elemento
 		return nil, err
 	}
 	return e, nil
+}
+
+// sqlRelacionados tiene una consulta por capa de origen: la tabla sale de la lista fija Capas y todo
+// lo demás va como parámetro ($1 id, $2 radio en metros, $3 límite por capa, $4 nombre de la capa).
+// El LEFT JOIN deja una fila con nulos si el punto existe pero no tiene vecinos, y ninguna si no existe.
+var sqlRelacionados = func() map[string]string {
+	consultas := make(map[string]string, len(Capas))
+	for capa, tabla := range Capas {
+		consultas[capa] = `WITH o AS (SELECT geom::geography AS g FROM ` + tabla + ` WHERE id = $1)
+			SELECT r.capa, r.id, r.nombre, round(r.d)::float8 FROM o LEFT JOIN LATERAL (
+				SELECT capa, id, nombre, d FROM (
+					SELECT l.capa, l.id, l.nombre, ST_Distance(o.g, l.geom::geography) AS d,
+						row_number() OVER (PARTITION BY l.capa ORDER BY ST_Distance(o.g, l.geom::geography), l.id) AS n
+					FROM (` + sqlLugares + `) l
+					WHERE ST_DWithin(o.g, l.geom::geography, $2) AND NOT (l.capa = $4::text AND l.id = $1)
+				) c WHERE n <= $3
+			) r ON true
+			ORDER BY r.d, r.capa, r.id`
+	}
+	return consultas
+}()
+
+func (p *Postgres) Relacionados(ctx context.Context, capa string, id int, radioM float64, limitePorCapa int) ([]Relacionado, error) {
+	consulta, ok := sqlRelacionados[capa]
+	if !ok {
+		return nil, ErrNoEncontrado
+	}
+	filas, err := p.pool.Query(ctx, consulta, id, radioM, limitePorCapa, capa)
+	if err != nil {
+		return nil, err
+	}
+	existe := false
+	relacionados, err := pgx.CollectRows(filas, func(f pgx.CollectableRow) (*Relacionado, error) {
+		existe = true
+		var (
+			c, nombre *string
+			i         *int
+			d         *float64
+		)
+		if err := f.Scan(&c, &i, &nombre, &d); err != nil || c == nil {
+			return nil, err // c nulo: el punto existe pero no tiene vecinos
+		}
+		return &Relacionado{Capa: *c, ID: *i, Nombre: *nombre, DistanciaM: *d}, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !existe {
+		return nil, ErrNoEncontrado
+	}
+	resultado := []Relacionado{}
+	for _, r := range relacionados {
+		if r != nil {
+			resultado = append(resultado, *r)
+		}
+	}
+	return resultado, nil
 }
 
 // Suma manzanas urbanas y localidades rurales por comuna. reservado = 1 marca los datos que el

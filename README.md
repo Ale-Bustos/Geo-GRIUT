@@ -26,7 +26,8 @@ El backend en Go tiene sus propios comandos: ver [`backend/README.md`](backend/R
 ## Estructura
 
 - `src/MapComponent.tsx`: mapa, capas, leyenda, brújula y tutorial.
-- `src/FeaturePopup.tsx`: contenido del popup de los puntos.
+- `src/FichaLugar.tsx` y `src/fichaCampos.ts`: ficha de cada lugar (panel lateral en escritorio, hoja inferior en celular) y qué columna va en cada sección.
+- `src/lugares.ts`: lugares con id estable, enlace `?lugar=<capa>:<id>` y lugares relacionados sin API.
 - `src/SelectorCapas.ts`: selector de capas con leyenda (adaptado de `simbologia_mapa_web/`).
 - `src/TutorialMapa.ts`: tutorial de bienvenida (adaptado de `simbologia_mapa_web/`).
 - `public/geojson/`: capas vectoriales (ríos, esteros, quebradas, límite provincial, toponimia, conflictos, puntos históricos y de resignificación).

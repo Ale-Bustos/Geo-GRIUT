@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Ale-Bustos/Geo-GRIUT/backend/internal/datos"
@@ -21,6 +22,13 @@ type almacenFalso struct {
 	elementos map[int]*datos.Elemento
 	pánico    bool
 	teselas   int // Teselas pedidas a la base
+	// Relacionados: con qué se llamó y qué devuelve (nil y sin error = punto sin vecinos)
+	relCapa      string
+	relID        int
+	relRadio     float64
+	relLimite    int
+	relacionados []datos.Relacionado
+	errRel       error
 }
 
 func (a *almacenFalso) Salud(context.Context) error { return a.errSalud }
@@ -41,6 +49,11 @@ func (a *almacenFalso) Elemento(_ context.Context, capa string, id int) (*datos.
 		return e, nil
 	}
 	return nil, datos.ErrNoEncontrado
+}
+
+func (a *almacenFalso) Relacionados(_ context.Context, capa string, id int, radioM float64, limitePorCapa int) ([]datos.Relacionado, error) {
+	a.relCapa, a.relID, a.relRadio, a.relLimite = capa, id, radioM, limitePorCapa
+	return a.relacionados, a.errRel
 }
 
 func (a *almacenFalso) Comunas(context.Context) ([]datos.Comuna, error) {
@@ -239,5 +252,80 @@ func TestCacheTeselasDescartaLaMenosUsada(t *testing.T) {
 	c.guardar(&teselaGuardada{clave: "grande", datos: make([]byte, 5000)})
 	if _, ok := c.obtener("grande"); ok || c.usado != 2000 {
 		t.Error("una tesela más grande que toda la caché no se guarda")
+	}
+}
+
+func TestRelacionadosValida(t *testing.T) {
+	casos := []struct {
+		ruta   string
+		estado int
+	}{
+		{"/api/lugares/rios/1/relacionados", http.StatusNotFound}, // Fuera de la lista blanca
+		{"/api/lugares/griut.conflictos/1/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/uno/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/1.5/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/0/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/-3/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/1%20OR%201=1/relacionados", http.StatusNotFound},
+		{"/api/lugares/conflictos/1/relacionados?radio=0", http.StatusBadRequest},
+		{"/api/lugares/conflictos/1/relacionados?radio=-100", http.StatusBadRequest},
+		{"/api/lugares/conflictos/1/relacionados?radio=20001", http.StatusBadRequest},
+		{"/api/lugares/conflictos/1/relacionados?radio=1e4", http.StatusBadRequest},
+		{"/api/lugares/conflictos/1/relacionados?radio=abc", http.StatusBadRequest},
+		{"/api/lugares/conflictos/1/relacionados?radio=20000", http.StatusOK},
+		{"/api/lugares/toponimos/25/relacionados", http.StatusOK},
+	}
+	for _, c := range casos {
+		a := &almacenFalso{}
+		if rec := pedir(t, servidorDePrueba(a), "GET", c.ruta, nil); rec.Code != c.estado {
+			t.Errorf("%s: estado %d, se esperaba %d", c.ruta, rec.Code, c.estado)
+		} else if c.estado != http.StatusOK && a.relCapa != "" {
+			t.Errorf("%s: una petición inválida llegó a la base", c.ruta)
+		}
+	}
+}
+
+func TestRelacionadosResponde(t *testing.T) {
+	a := &almacenFalso{relacionados: []datos.Relacionado{
+		{Capa: "toponimos", ID: 3, Nombre: "Wallpen", DistanciaM: 812.5},
+		{Capa: "conflictos", ID: 9, Nombre: "Península de Hualpén", DistanciaM: 1500},
+	}}
+	rec := pedir(t, servidorDePrueba(a), "GET", "/api/lugares/puntos-historicos/4/relacionados?radio=3000", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("estado %d", rec.Code)
+	}
+	if a.relCapa != "puntos-historicos" || a.relID != 4 || a.relRadio != 3000 || a.relLimite != relacionadosCapa {
+		t.Errorf("se pidió %s/%d radio %v límite %d", a.relCapa, a.relID, a.relRadio, a.relLimite)
+	}
+	var cuerpo []map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &cuerpo); err != nil {
+		t.Fatal(err)
+	}
+	if len(cuerpo) != 2 || cuerpo[0]["capa"] != "toponimos" || cuerpo[0]["id"] != 3.0 ||
+		cuerpo[0]["nombre"] != "Wallpen" || cuerpo[0]["distancia_m"] != 812.5 {
+		t.Errorf("cuerpo %s", rec.Body)
+	}
+	if rec.Header().Get("Cache-Control") != cachePublica {
+		t.Errorf("Cache-Control %q", rec.Header().Get("Cache-Control"))
+	}
+
+	pedir(t, servidorDePrueba(a), "GET", "/api/lugares/conflictos/2/relacionados", nil)
+	if a.relRadio != radioPorDefecto {
+		t.Errorf("sin radio se esperaba %d y se pidió %v", radioPorDefecto, a.relRadio)
+	}
+}
+
+func TestRelacionadosSinVecinosYNoEncontrado(t *testing.T) {
+	rec := pedir(t, servidorDePrueba(&almacenFalso{}), "GET", "/api/lugares/conflictos/2/relacionados", nil)
+	if rec.Code != http.StatusOK || rec.Body.String() != "[]\n" {
+		t.Errorf("sin vecinos se esperaba [] y llegó %d %q", rec.Code, rec.Body)
+	}
+	rec = pedir(t, servidorDePrueba(&almacenFalso{errRel: datos.ErrNoEncontrado}), "GET", "/api/lugares/conflictos/99/relacionados", nil)
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("punto inexistente: estado %d", rec.Code)
+	}
+	rec = pedir(t, servidorDePrueba(&almacenFalso{errRel: errors.New("detalle secreto")}), "GET", "/api/lugares/conflictos/2/relacionados", nil)
+	if rec.Code != http.StatusInternalServerError || strings.Contains(rec.Body.String(), "secreto") {
+		t.Errorf("error interno: %d %q", rec.Code, rec.Body)
 	}
 }
