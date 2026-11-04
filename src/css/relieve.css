@@ -1,0 +1,5 @@
+/* Relieve sombreado (relieve.ts): blanco en lo plano y gris en las laderas en sombra; al multiplicarlo
+   solo oscurece las laderas y el mapa base conserva sus colores.
+   OpenLayers dibuja la capa WebGL en un canvas (no en un div, como las pinturas) y ol.css le aplica
+   ".ol-viewport canvas { all: unset }": hace falta un selector más específico */
+.ol-viewport canvas.relieve-sombreado { mix-blend-mode: multiply; }

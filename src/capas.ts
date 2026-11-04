@@ -21,6 +21,7 @@ import type VectorTile from 'ol/VectorTile';
 import TileState from 'ol/TileState';
 import { crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 import { API_URL } from './api';
+import { crearRelieve } from './relieve';
 import { CAPAS_LUGAR, type CapaLugar } from './lugares';
 
 // Token público de Mapbox para el mapa base (ver .env.example)
@@ -341,7 +342,10 @@ const createPoblacionLayer = (layerName: string, title: string, popupCategory: s
 };
 
 // Crea todas las capas del mapa (se llama al montar el componente para no compartir capas entre mapas)
-export const createLayers = () => {
+export const createLayers = ({ relieveVisible = true } = {}) => {
+  const relieve = crearRelieve().capa;
+  relieve.setVisible(relieveVisible);
+
   const conflictoSymbol = createCircleSymbol('conflicto', 'red', 'white');
   const batallaSymbol = createIconSymbol('batalla');
   const sitioArqueologicoSymbol = createIconSymbol('sitio_arqueologico');
@@ -434,7 +438,10 @@ export const createLayers = () => {
             tilePixelRatio: 2
           }),
           properties: { title: 'Mapbox' }
-        })
+        }),
+        // Relieve sobre el mapa base y bajo todas las capas temáticas (pinturas y nombres incluidos).
+        // Va en este grupo para que el recorrido, que enciende y apaga las capas temáticas, no lo toque
+        relieve
       ]
     }),
     new LayerGroup({
