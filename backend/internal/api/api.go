@@ -25,6 +25,9 @@ const (
 	cacheTesela      = "public, max-age=86400" // Las capas cambian rara vez
 	zoomMaximo       = 16                      // Igual que GeoServer: más cerca, el mapa amplía las teselas de este nivel
 	memoriaTeselas   = 64 << 20                // 64 MB de teselas en memoria
+	radioPorDefecto  = 5000                    // Metros alrededor del lugar para buscar relacionados
+	radioMaximo      = 20000
+	relacionadosCapa = 5 // Relacionados como mucho por capa, para que una capa no tape a las demás
 )
 
 // Servidor reúne las rutas de la API.
@@ -52,6 +55,7 @@ func (s *Servidor) Handler() http.Handler {
 	mux.HandleFunc("GET /api/salud", s.salud)
 	mux.HandleFunc("GET /api/buscar", s.buscar)
 	mux.HandleFunc("GET /api/capas/{capa}/elementos/{id}", s.elemento)
+	mux.HandleFunc("GET /api/lugares/{capa}/{id}/relacionados", s.relacionados)
 	mux.HandleFunc("GET /api/poblacion/comunas", s.comunas)
 	mux.HandleFunc("GET /api/teselas/{capa}/{z}/{x}/{y}", s.tesela)
 	return s.recuperar(s.registrar(s.cors(mux)))
@@ -112,6 +116,39 @@ func (s *Servidor) elemento(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", cachePublica)
 	responderJSON(w, http.StatusOK, e)
+}
+
+// relacionados sirve /api/lugares/{capa}/{id}/relacionados?radio=<metros>
+func (s *Servidor) relacionados(w http.ResponseWriter, r *http.Request) {
+	capa := r.PathValue("capa")
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if _, ok := datos.Capas[capa]; !ok || err != nil || id < 1 {
+		responderError(w, http.StatusNotFound, "no encontrado")
+		return
+	}
+	radio := radioPorDefecto
+	if v := r.URL.Query().Get("radio"); v != "" {
+		n, err := strconv.Atoi(v)
+		if err != nil || n < 1 || n > radioMaximo {
+			responderError(w, http.StatusBadRequest, "radio debe ser un número de metros entre 1 y 20000")
+			return
+		}
+		radio = n
+	}
+	relacionados, err := s.almacen.Relacionados(r.Context(), capa, id, float64(radio), relacionadosCapa)
+	if errors.Is(err, datos.ErrNoEncontrado) {
+		responderError(w, http.StatusNotFound, "no encontrado")
+		return
+	}
+	if err != nil {
+		s.fallo(w, r, err)
+		return
+	}
+	if relacionados == nil {
+		relacionados = []datos.Relacionado{}
+	}
+	w.Header().Set("Cache-Control", cachePublica)
+	responderJSON(w, http.StatusOK, relacionados)
 }
 
 func (s *Servidor) comunas(w http.ResponseWriter, r *http.Request) {

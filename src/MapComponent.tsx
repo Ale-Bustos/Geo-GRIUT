@@ -1,37 +1,42 @@
 import 'ol/ol.css'; // Importa los estilos básicos de OpenLayers
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import Map from 'ol/Map';
 import View from 'ol/View';
-import Overlay from 'ol/Overlay';
 import { defaults as defaultControls, ScaleLine } from 'ol/control';
 import type VectorLayer from 'ol/layer/Vector';
-import type VectorSource from 'ol/source/Vector';
 import { fromLonLat } from 'ol/proj';
 import Point from 'ol/geom/Point';
 import type { Coordinate } from 'ol/coordinate';
 import './css/logo.css'; // Estilos del logo de GRIUT
-import './css/popup.css'; // Estilos del popup de los puntos
+import './css/ficha-lugar.css'; // Ficha de los lugares
 import './css/selector-capas.css'; // Estilos del selector de capas
 import './css/tutorial-mapa.css'; // Estilos del tutorial
 import './css/recorrido.css'; // Botón y tarjeta del recorrido guiado
-import { createLayers, findLayer, isPopupLayer } from './capas';
+import { capaLugarDe, createLayers, findLayer, isPopupLayer } from './capas';
 import { crearSelectorCapas } from './configSelector';
 import { crearTutorial } from './configTutorial';
 import Recorrido from './Recorrido';
 import { RECORRIDO_TERRITORIO } from './configRecorrido';
 import { BarridoPinturas, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN, tituloNombre } from './PinturaTerritorio';
-import { CENTRO_INICIAL, ZOOM_INICIAL, INITIAL_ROTATION } from './vista';
+import { CENTRO_INICIAL, ZOOM_INICIAL, INITIAL_ROTATION, centroPara, zonaLibre } from './vista';
 import Brujula, { orientarBrujula } from './Brujula';
-import FeaturePopup from './FeaturePopup';
+import FichaLugar from './FichaLugar';
 import Buscador from './Buscador';
-import { CAPAS_API, type ResultadoBusqueda } from './api';
+import type { ResultadoBusqueda } from './api';
+import { CAPAS_LUGAR, buscarLugar, claveLugar, escribirLugarUrl, esCapaLugar, leerClaveLugar, leerLugarUrl, type RefLugar } from './lugares';
 
-// Punto del mapa cuyo popup está abierto
-interface SelectedFeature {
+// Elemento del mapa cuya ficha está abierta; lugar solo en los puntos con id (ver lugares.ts)
+interface Seleccion {
   properties: Record<string, unknown>;
   category: string;
   coordinate: Coordinate;
+  lugar: RefLugar | null;
+}
+
+// Hacia dónde llevar el mapa cuando la ficha ya está dibujada: sin zoom, solo si la ficha tapa el punto
+interface Encuadre {
+  coordenada: Coordinate;
+  zoom?: number;
 }
 
 // Densidad de píxeles con que se dibuja el mapa mientras se mueve. Pintar el canvas a la densidad
@@ -39,26 +44,91 @@ interface SelectedFeature {
 // vuelve a la densidad de la pantalla para que se vea nítido
 const MOVING_PIXEL_RATIO = 1;
 
-// Acercamiento mínimo al volar a un lugar elegido en el buscador
+// Acercamiento mínimo al volar a un lugar (buscador, enlace o relacionado)
 const ZOOM_BUSQUEDA = 14;
 const DURACION_BUSQUEDA_MS = 1000;
+const DURACION_DESPLAZAMIENTO_MS = 250; // Al correr el mapa para que la ficha no tape el punto
 
 // Tolerancia en píxeles para hacer clic sobre un punto (facilita el uso en pantallas táctiles)
 const POPUP_HIT_TOLERANCE = 6;
 
-// Componente del mapa: crea el mapa y conecta capas, selector, pinturas, popup, tutorial, recorrido y brújula
+// Propiedades de un elemento sin su geometría (OpenLayers la guarda entre las propiedades)
+const sinGeometria = (propiedades: Record<string, unknown>) => {
+  const copia = { ...propiedades };
+  delete copia.geometry;
+  return copia;
+};
+
+const reducirMovimiento = () => Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+
+// Componente del mapa: crea el mapa y conecta capas, selector, pinturas, ficha, tutorial, recorrido y brújula
 const MapComponent = () => {
   const mapRef = useRef<Map | null>(null); // Referencia al mapa
   const compassRef = useRef<HTMLButtonElement>(null); // Referencia a la brújula
-  const popupOverlayRef = useRef<Overlay | null>(null); // Referencia al overlay del popup
-  const [popupElement] = useState(() => {
-    const element = document.createElement('div'); // Contenedor que OpenLayers posiciona sobre el mapa
-    element.className = 'ol-popup';
-    return element;
-  });
-  const [selectedFeature, setSelectedFeature] = useState<SelectedFeature | null>(null); // Punto cuyo popup está abierto
+  const [seleccion, setSeleccion] = useState<Seleccion | null>(null); // Elemento cuya ficha está abierta
+  const encuadreRef = useRef<Encuadre | null>(null);
+  const urlListaRef = useRef(false); // La URL refleja la ficha solo después de leer el enlace inicial
   const recorridoRef = useRef<Recorrido | null>(null);
   const [recorridoAbierto, setRecorridoAbierto] = useState(false);
+
+  // Abre la ficha de un lugar por su capa e id (buscador, enlace ?lugar= o relacionado): enciende su
+  // capa y vuela hasta él. Devuelve si el lugar existe
+  const abrirLugar = async (ref: RefLugar) => {
+    const lugar = await buscarLugar(ref).catch(() => null);
+    const map = mapRef.current;
+    if (!lugar || !map) return false;
+    const { titulo, categoria } = CAPAS_LUGAR[ref.capa];
+    findLayer(map, titulo)?.setVisible(true);
+    const coordenada = fromLonLat([lugar.lon, lugar.lat]);
+    encuadreRef.current = { coordenada, zoom: Math.max(map.getView().getZoom() ?? 0, ZOOM_BUSQUEDA) };
+    setSeleccion((antes) => {
+      // La misma ficha ya abierta no se vuelve a medir: se encuadra en el próximo cuadro
+      if (antes?.lugar && claveLugar(antes.lugar) === claveLugar(ref)) {
+        requestAnimationFrame(() => {
+          const ficha = document.querySelector('.ficha-lugar');
+          if (ficha) encuadrar(ficha.getBoundingClientRect());
+        });
+      }
+      return { properties: lugar.propiedades, category: categoria, coordinate: coordenada, lugar: ref };
+    });
+    return true;
+  };
+
+  // Con la ficha dibujada, lleva el punto a la parte del mapa que la ficha deja libre
+  const encuadrar = (ficha: DOMRect) => {
+    const map = mapRef.current;
+    const encuadre = encuadreRef.current;
+    encuadreRef.current = null;
+    if (!map || !encuadre) return;
+    const tamano = map.getSize();
+    if (!tamano || !tamano[0] || !tamano[1]) return;
+    const visor = map.getViewport()?.getBoundingClientRect();
+    if (!visor) return;
+    const tapa = { left: ficha.left - visor.left, top: ficha.top - visor.top, right: ficha.right - visor.left, bottom: ficha.bottom - visor.top };
+    const zona = zonaLibre(tapa, tamano[0], tamano[1]);
+    if (encuadre.zoom === undefined) {
+      const pixel = map.getPixelFromCoordinate(encuadre.coordenada);
+      if (pixel && zona.contiene(pixel)) return; // Se ve bien: no se mueve el mapa
+    }
+    const vista = map.getView();
+    const zoom = encuadre.zoom ?? vista.getZoom() ?? ZOOM_BUSQUEDA;
+    // Con relleno (durante el recorrido) el centro de la vista es el del área sin relleno
+    const [arriba, derecha, abajo, izquierda] = vista.padding ?? [0, 0, 0, 0];
+    const centro = centroPara(encuadre.coordenada, [tamano[0] - izquierda - derecha, tamano[1] - arriba - abajo],
+      [zona.centro[0] - izquierda, zona.centro[1] - arriba], vista.getResolutionForZoom(zoom), vista.getRotation());
+    vista.cancelAnimations();
+    vista.animate({
+      center: centro,
+      zoom,
+      duration: reducirMovimiento() ? 0 : (encuadre.zoom === undefined ? DURACION_DESPLAZAMIENTO_MS : DURACION_BUSQUEDA_MS)
+    });
+  };
+
+  // Funciones del render más reciente, para los manejadores que registra el mapa al montarse
+  const accionesRef = useRef({ abrirLugar });
+  useEffect(() => {
+    accionesRef.current = { abrirLugar };
+  });
 
   useEffect(() => {
     const map = new Map({
@@ -95,42 +165,38 @@ const MapComponent = () => {
       pintura.getSource()?.once('featuresloadend', () => barridos.iniciar(pintura));
     });
 
-    // Popup con la información de los puntos
-    const popupOverlay = new Overlay({
-      element: popupElement,
-      className: 'ol-overlay-container ol-selectable popup-overlay', // popup-overlay lo deja sobre el selector de capas
-      autoPan: { animation: { duration: 250 } } // Desplaza el mapa si el popup queda fuera de la vista
-    });
-    map.addOverlay(popupOverlay);
     // OpenLayers fija z-index 0 en el contenedor de overlays y controles; se sube por encima
-    // del logo y la brújula (z-index 1000) para que no tapen el popup
+    // del logo y la brújula (z-index 1000) para que no tapen el selector de capas
     const overlayContainer = map.getOverlayContainerStopEvent();
     if (overlayContainer) {
       overlayContainer.style.zIndex = '1100';
     }
-    popupOverlayRef.current = popupOverlay;
 
-    const closePopup = () => setSelectedFeature(null);
+    const cerrarFicha = () => setSeleccion(null);
 
-    // Al hacer clic en un punto se abre su popup; al hacer clic fuera, se cierra
+    // Al hacer clic en un elemento se abre su ficha; al hacer clic fuera, se cierra
     map.on('singleclick', (event) => {
-      // Se queda con el primer punto encontrado
+      // Se queda con el primer elemento encontrado
       const hit = map.forEachFeatureAtPixel(event.pixel, (feature, layer) => ({ feature, layer }),
         { layerFilter: isPopupLayer, hitTolerance: POPUP_HIT_TOLERANCE });
-
-      if (hit) {
-        const geometry = hit.feature.getGeometry();
-        setSelectedFeature({
-          properties: hit.feature.getProperties(),
-          category: hit.layer.get('popupCategory'),
-          coordinate: geometry instanceof Point ? geometry.getCoordinates() : event.coordinate
-        });
-      } else {
-        closePopup();
+      if (!hit) {
+        cerrarFicha();
+        return;
       }
+      const geometry = hit.feature.getGeometry();
+      const coordinate = geometry instanceof Point ? geometry.getCoordinates() : event.coordinate;
+      const capa = capaLugarDe(hit.layer);
+      const id = hit.feature.getId();
+      encuadreRef.current = { coordenada: coordinate };
+      setSeleccion({
+        properties: sinGeometria(hit.feature.getProperties()),
+        category: hit.layer.get('popupCategory'),
+        coordinate,
+        lugar: capa && typeof id === 'number' && Number.isInteger(id) ? { capa, id } : null
+      });
     });
 
-    // Cambia el cursor al pasar sobre un punto con popup
+    // Cambia el cursor al pasar sobre un elemento con ficha
     map.on('pointermove', (event) => {
       if (event.dragging) {
         return;
@@ -142,24 +208,16 @@ const MapComponent = () => {
       }
     });
 
-    // La tecla Escape cierra el popup
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        closePopup();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-
     // La brújula sigue la rotación del mapa
     const updateCompass = () => orientarBrujula(compassRef.current, map.getView().getRotation());
     map.getView().on('change:rotation', updateCompass);
     updateCompass(); // Orienta la brújula según la rotación inicial del mapa
 
-    // Recorrido guiado (ver configRecorrido.ts); cada capítulo cierra el popup del anterior
+    // Recorrido guiado (ver configRecorrido.ts); cada capítulo cierra la ficha del anterior
     const recorrido = new Recorrido(map, RECORRIDO_TERRITORIO, {
       alAbrir: () => setRecorridoAbierto(true),
       alCerrar: () => setRecorridoAbierto(false),
-      alCambiar: closePopup
+      alCambiar: cerrarFicha
     });
     recorridoRef.current = recorrido;
 
@@ -167,66 +225,65 @@ const MapComponent = () => {
     const tutorial = crearTutorial(() => barridos.iniciar());
     // Espera a que el mapa y el selector de capas estén dibujados para destacarlos. Si el enlace
     // apunta a un capítulo del recorrido, se abre ese capítulo en vez del tutorial
-    const tutorialTimeout = setTimeout(() => {
-      if (!recorrido.abrirDesdeUrl()) tutorial.iniciar();
-    }, 1000);
+    let tutorialTimeout: ReturnType<typeof setTimeout> | undefined;
+    const iniciarTutorial = () => {
+      tutorialTimeout = setTimeout(() => {
+        if (!recorrido.abrirDesdeUrl()) tutorial.iniciar();
+      }, 1000);
+    };
+
+    // Un enlace ?lugar=<capa>:<id> abre la ficha de ese lugar en vez del tutorial y del recorrido
+    let desmontado = false;
+    const lugarUrl = leerLugarUrl();
+    if (lugarUrl) {
+      accionesRef.current.abrirLugar(lugarUrl).then((abierto) => {
+        if (desmontado) return;
+        urlListaRef.current = true;
+        if (!abierto) {
+          escribirLugarUrl(null); // El lugar no existe: el enlace no sirve
+          iniciarTutorial();
+        }
+      });
+    } else {
+      urlListaRef.current = true;
+      iniciarTutorial();
+    }
 
     // Limpieza al desmontar el componente
     return () => {
+      desmontado = true;
       clearTimeout(tutorialTimeout);
       tutorial.destruir();
       recorrido.destruir();
       recorridoRef.current = null;
       barridos.destruir();
-      document.removeEventListener('keydown', handleKeyDown);
       map.setTarget(undefined);
       mapRef.current = null;
     };
-  }, [popupElement]);
+  }, []);
 
-  // Posiciona el popup después de que React dibuje su contenido, para que el desplazamiento
-  // automático del mapa (autoPan) use el tamaño real del popup
+  // La URL lleva el lugar cuya ficha está abierta, para compartirla o volver a ella
+  const lugarAbierto = seleccion?.lugar ? claveLugar(seleccion.lugar) : null;
   useEffect(() => {
-    popupOverlayRef.current?.setPosition(selectedFeature ? selectedFeature.coordinate : undefined);
-  }, [selectedFeature]);
+    if (!urlListaRef.current) return;
+    escribirLugarUrl(leerClaveLugar(lugarAbierto));
+  }, [lugarAbierto]);
+
+  // Con la ficha abierta, en celular se oculta la barra de chips del selector (ver ficha-lugar.css)
+  const fichaAbierta = seleccion !== null;
+  useEffect(() => {
+    document.body.classList.toggle('con-ficha', fichaAbierta);
+    return () => document.body.classList.remove('con-ficha');
+  }, [fichaAbierta]);
 
   // Mientras dura el recorrido se ocultan los controles que la tarjeta taparía (ver recorrido.css)
   useEffect(() => {
     document.body.classList.toggle('en-recorrido', recorridoAbierto);
   }, [recorridoAbierto]);
 
-  const handleClosePopup = () => setSelectedFeature(null);
-
-  // Vuela al lugar elegido en el buscador, enciende su capa y, si es un punto con popup, lo abre
-  const irALugar = (lugar: ResultadoBusqueda) => {
-    const map = mapRef.current;
-    if (!map) return;
-    const coordenada = fromLonLat([lugar.lon, lugar.lat]);
-    const capa = findLayer(map, CAPAS_API[lugar.capa]) as VectorLayer<VectorSource> | null;
-    capa?.setVisible(true);
-    setSelectedFeature(null);
-
-    const abrirPopup = () => {
-      const fuente = capa?.getSource();
-      const punto = fuente?.getClosestFeatureToCoordinate(coordenada);
-      const geometria = punto?.getGeometry();
-      if (!capa || !punto || !isPopupLayer(capa) || !(geometria instanceof Point)) return;
-      setSelectedFeature({ properties: punto.getProperties(), category: capa.get('popupCategory'), coordinate: geometria.getCoordinates() });
-    };
-    const vista = map.getView();
-    vista.cancelAnimations();
-    const reducir = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    vista.animate({
-      center: coordenada,
-      zoom: Math.max(vista.getZoom() ?? 0, ZOOM_BUSQUEDA),
-      duration: reducir ? 0 : DURACION_BUSQUEDA_MS
-    }, (completa) => {
-      if (!completa) return;
-      // Una capa recién encendida aún puede estar cargando sus puntos
-      const fuente = capa?.getSource();
-      if (fuente && fuente.getFeatures().length === 0) fuente.once('featuresloadend', abrirPopup);
-      else abrirPopup();
-    });
+  // Vuela al lugar elegido en el buscador y abre su ficha
+  const irALugar = (resultado: ResultadoBusqueda) => {
+    if (esCapaLugar(resultado.capa)) void abrirLugar({ capa: resultado.capa, id: resultado.id });
   };
 
   return (
@@ -250,13 +307,15 @@ const MapComponent = () => {
         <img src="logo01.png" alt="Logo GRIUT" />
         <div><b>Grupo de Estudios Interculturales<br />Urbanos y Territoriales</b></div>
       </div>
-      {selectedFeature && createPortal(
-        <FeaturePopup
-          properties={selectedFeature.properties}
-          category={selectedFeature.category}
-          onClose={handleClosePopup}
-        />,
-        popupElement
+      {seleccion && (
+        <FichaLugar
+          properties={seleccion.properties}
+          category={seleccion.category}
+          lugar={seleccion.lugar}
+          onClose={() => setSeleccion(null)}
+          onElegirRelacionado={(ref) => void abrirLugar(ref)}
+          onMedir={encuadrar}
+        />
       )}
     </div>
   );

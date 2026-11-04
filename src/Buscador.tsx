@@ -1,19 +1,15 @@
 // Buscador de lugares: consulta la API de GRIUT (backend en Go) y avisa qué lugar se eligió.
 // Si la API no responde, el buscador no se muestra y el mapa sigue igual
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { apiDisponible, buscarLugares, CAPAS_API, type ResultadoBusqueda } from './api';
+import { apiDisponible, buscarLugares, type ResultadoBusqueda } from './api';
+import { CAPAS_LUGAR, esCapaLugar } from './lugares';
 import './css/buscador.css';
 
 const ESPERA_MS = 250; // Espera tras la última tecla antes de consultar
 const LARGO_MINIMO = 2;
 
-// Nombre corto de cada capa, bajo el nombre del lugar
-const ETIQUETA_CAPA: Record<string, string> = {
-  'toponimos': 'Topónimo',
-  'puntos-historicos': 'Punto histórico',
-  'puntos-resignificacion': 'Resignificación cultural',
-  'conflictos': 'Conflicto socioambiental'
-};
+// Categoría de cada capa bajo el nombre del lugar, la misma que muestra la ficha
+const etiquetaCapa = (capa: string) => (esCapaLugar(capa) ? CAPAS_LUGAR[capa].categoria : '');
 
 interface BuscadorProps {
   alElegir: (resultado: ResultadoBusqueda) => void;
@@ -43,7 +39,7 @@ const Buscador = ({ alElegir }: BuscadorProps) => {
     const control = new AbortController();
     const espera = setTimeout(() => {
       buscarLugares(q, control.signal)
-        .then((r) => setRespuesta({ q, resultados: r.filter((x) => x.capa in CAPAS_API) }))
+        .then((r) => setRespuesta({ q, resultados: r.filter((x) => esCapaLugar(x.capa)) }))
         .catch(() => !control.signal.aborted && setRespuesta({ q, resultados: [] }));
     }, ESPERA_MS);
     return () => {
@@ -81,7 +77,7 @@ const Buscador = ({ alElegir }: BuscadorProps) => {
       e.preventDefault();
       elegir(resultados[Math.max(activo, 0)]);
     } else if (e.key === 'Escape') {
-      e.stopPropagation(); // Que no cierre también el popup
+      e.stopPropagation(); // Que no cierre también la ficha
       cerrar();
     }
   };
@@ -115,7 +111,7 @@ const Buscador = ({ alElegir }: BuscadorProps) => {
               className={i === activo ? 'buscador-activo' : undefined}
               onMouseDown={(e) => e.preventDefault()} onClick={() => elegir(r)}>
               <span className="buscador-nombre">{r.nombre}</span>
-              <span className="buscador-capa">{ETIQUETA_CAPA[r.capa]}</span>
+              <span className="buscador-capa">{etiquetaCapa(r.capa)}</span>
             </li>
           ))}
           {resultados.length === 0 && <li className="buscador-vacio" role="presentation">Sin resultados</li>}

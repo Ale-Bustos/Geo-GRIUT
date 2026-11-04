@@ -1,0 +1,292 @@
+/* Ficha de los lugares (FichaLugar.tsx): panel lateral en escritorio y hoja inferior en celulares.
+   Misma paleta del textil mapuche que el tutorial y el selector de capas: kelü (rojo), kurü (negro),
+   lig (blanco) y kallfü (azul). */
+
+.ficha-lugar {
+  --fl-kelu: #8B1E1E;
+  --fl-kuru: #1C1917;
+  --fl-lig: #FAF7F2;
+  --fl-kallfu: #2B3A8C;
+  --fl-texto: #292524;
+  --fl-secundario: #78716C;
+  --fl-linea: #E7E1D8;
+  --fl-fuente: "Segoe UI", Inter, "Source Sans 3", system-ui, -apple-system, sans-serif;
+  /* Banda de ñimin: rombo escalonado negro sobre rojo, centro blanco */
+  --fl-nimin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12' shape-rendering='crispEdges'%3E%3Crect width='24' height='12' fill='%238B1E1E'/%3E%3Cpath d='M11 0h2v2h2v2h2v4h-2v2h-2v2h-2v-2h-2v-2h-2v-4h2v-2h2z' fill='%231C1917'/%3E%3Crect x='11' y='5' width='2' height='2' fill='%23FAF7F2'/%3E%3Crect x='0' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3Crect x='23' y='5' width='1' height='2' fill='%23FAF7F2'/%3E%3C/svg%3E");
+
+  position: fixed;
+  z-index: 1500; /* Sobre los controles del mapa (1100), el logo y la brújula (1000); bajo el tutorial (2000) */
+  top: 12px;
+  left: 12px;
+  bottom: 12px;
+  width: min(380px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  background: var(--fl-lig);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 28px rgba(28, 25, 23, 0.28);
+  font-family: var(--fl-fuente);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--fl-texto);
+  animation: fl-entra 0.2s ease both;
+}
+
+.ficha-lugar *, .ficha-lugar *::before, .ficha-lugar *::after { box-sizing: border-box; }
+
+@keyframes fl-entra { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+
+/* El asa solo existe en la hoja inferior */
+.ficha-asa { display: none; }
+
+.ficha-banda {
+  flex: none;
+  height: 14px;
+  background: var(--fl-nimin) repeat-x center / 28px 14px;
+  border-bottom: 2px solid var(--fl-kuru);
+}
+
+.ficha-cabecera {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 8px 0 18px;
+}
+
+/* Categoría con un rombo, como los del avance del tutorial */
+.ficha-categoria {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fl-kelu);
+}
+
+.ficha-categoria::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: var(--fl-kelu);
+  transform: rotate(45deg);
+}
+
+.ficha-acciones { display: flex; gap: 2px; }
+
+.ficha-boton {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fl-secundario);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ficha-boton:hover { background: #F0ECE6; color: var(--fl-kuru); }
+.ficha-lugar :focus-visible { outline: 2px solid var(--fl-kallfu); outline-offset: 2px; }
+
+.ficha-cuerpo {
+  flex: 1;
+  min-height: 0;
+  padding: 2px 18px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ficha-titulo {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--fl-kuru);
+}
+
+/* El título recibe el foco al abrir (los lectores de pantalla lo anuncian); no es un control, así que sin contorno */
+.ficha-lugar .ficha-titulo:focus, .ficha-lugar .ficha-titulo:focus-visible { outline: none; }
+
+.ficha-otro-nombre { margin: 0 0 6px; font-size: 13px; color: var(--fl-secundario); }
+
+.ficha-seccion { margin: 12px 0 0; }
+
+.ficha-seccion h3,
+.ficha-detalle dt {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fl-secundario);
+}
+
+.ficha-descripcion { margin: 0; font-size: 14.5px; }
+
+/* Desglose del topónimo: cada parte en mapudungun y su significado */
+.ficha-desglose { margin: 0; }
+.ficha-desglose > div {
+  display: grid;
+  grid-template-columns: minmax(70px, max-content) 1fr;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--fl-linea);
+}
+.ficha-desglose dt { font-weight: 700; color: var(--fl-kelu); }
+.ficha-desglose dd { margin: 0; }
+
+.ficha-audio { display: block; width: 100%; height: 36px; }
+.ficha-credito { margin: 3px 0 0; font-size: 11px; color: var(--fl-secundario); }
+
+/* Foto o lámina: ancho completo, recortada a una altura fija; tocarla la abre en grande */
+.ficha-foto { margin: 0 0 10px; }
+.ficha-foto a { display: block; border-radius: 8px; overflow: hidden; background: var(--fl-linea); }
+.ficha-foto img { display: block; width: 100%; height: 170px; object-fit: cover; }
+.ficha-foto figcaption { margin-top: 3px; font-size: 11px; color: var(--fl-secundario); }
+
+/* Mirada ambiental / mapuche: texto corrido con una línea kelü al costado */
+.ficha-mirada {
+  margin: 12px 0 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--fl-kelu);
+}
+.ficha-mirada h3 {
+  margin: 0 0 2px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fl-kelu);
+}
+.ficha-mirada p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+
+.ficha-detalle { margin: 12px 0 0; }
+.ficha-detalle > div { padding: 7px 0; border-top: 1px solid var(--fl-linea); }
+.ficha-detalle dt { margin: 0; }
+.ficha-detalle dd { margin: 2px 0 0; font-size: 14px; }
+
+.ficha-fuentes { padding-top: 9px; border-top: 1px solid var(--fl-linea); }
+.ficha-fuentes ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+/* Cada fuente como etiqueta; los enlaces en kallfü */
+.ficha-fuentes li {
+  padding: 3px 9px;
+  border: 1px solid var(--fl-linea);
+  border-radius: 999px;
+  background: #FFFFFF;
+  overflow-wrap: anywhere;
+}
+.ficha-fuentes a { color: var(--fl-kallfu); font-weight: 600; text-decoration: none; }
+.ficha-fuentes a:hover { text-decoration: underline; }
+
+/* Lugares relacionados: botones a lo ancho con nombre y, debajo, categoría y distancia */
+.ficha-relacionados { padding-top: 9px; border-top: 1px solid var(--fl-linea); }
+.ficha-relacionados ul { display: grid; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.ficha-relacionados button {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 12px;
+  border: 1px solid var(--fl-linea);
+  border-left: 3px solid var(--fl-kallfu);
+  border-radius: 8px;
+  background: #FFFFFF;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ficha-relacionados button:hover { border-color: var(--fl-kallfu); }
+.ficha-relacionado-nombre { font-weight: 600; color: var(--fl-kuru); }
+.ficha-relacionado-dato { font-size: 12px; color: var(--fl-secundario); }
+
+.ficha-nota { margin: 8px 0 0; font-size: 11.5px; color: var(--fl-secundario); }
+
+/* Aviso de "Enlace copiado" sobre el pie de la ficha */
+.ficha-aviso {
+  position: absolute;
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--fl-kuru);
+  color: var(--fl-lig);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.ficha-aviso:empty { display: none; }
+
+/* Celular y teléfonos en horizontal: hoja inferior con asa, en tres alturas (ver FichaLugar.tsx) */
+@media (max-width: 640px), (max-height: 500px) {
+  .ficha-lugar {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: 560px;
+    margin: 0 auto;
+    height: calc(var(--ficha-alto, var(--ficha-fraccion)) * 1vh);
+    height: calc(var(--ficha-alto, var(--ficha-fraccion)) * 1dvh);
+    border-radius: 16px 16px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transition: height 0.2s ease;
+    animation-name: fl-sube;
+  }
+  .ficha-arrastrando { transition: none; }
+  /* La barra de chips del selector quedaría detrás de la hoja (ver recorrido.css, que hace lo mismo) */
+  .con-ficha .sc-chips { display: none; }
+
+  .ficha-asa {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    background: var(--fl-lig);
+    cursor: grab;
+    touch-action: none; /* El arrastre mueve la hoja, no la página */
+  }
+  .ficha-asa span { width: 40px; height: 4px; border-radius: 2px; background: #A8A29E; }
+  .ficha-asa:focus-visible { outline-offset: -4px; }
+
+  .ficha-banda { height: 10px; background-size: 20px 10px; }
+  .ficha-cabecera { padding: 4px 6px 0 14px; }
+  .ficha-boton { width: 44px; height: 44px; }
+  .ficha-cuerpo { padding: 0 14px 16px; }
+  .ficha-titulo { font-size: 18px; }
+  .ficha-foto img { height: 140px; }
+}
+
+@keyframes fl-sube { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ficha-lugar { animation: none; transition: none; }
+}
