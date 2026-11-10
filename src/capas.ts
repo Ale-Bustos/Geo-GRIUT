@@ -19,6 +19,10 @@ import type { FeatureLike } from 'ol/Feature';
 import type Tile from 'ol/Tile';
 import type VectorTile from 'ol/VectorTile';
 import TileState from 'ol/TileState';
+import TileGrid from 'ol/tilegrid/TileGrid';
+import { createXYZ } from 'ol/tilegrid';
+import { get as getProjection } from 'ol/proj';
+import { getBottomLeft, getTopLeft, getWidth, type Extent } from 'ol/extent';
 import { crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 import { API_URL } from './api';
 import { crearRelieve } from './relieve';
@@ -127,16 +131,54 @@ const loadTileWithFallback = (layerName: string, format: MVT) => (tile: Tile, ur
   });
 };
 
+// Teselas que cubre cada capa en el zoom 16, tal como las informa GeoWebCache: [xMín, yMín, xMáx, yMáx]
+// en numeración TMS (filas desde abajo). Fuera de ellas GeoServer responde 404, así que no se piden.
+// Si cambia la extensión de una capa, se consulta pidiendo cualquier tesela fuera de rango, p. ej.
+// .../griut:<capa>@EPSG:900913@pbf/16/0/0.pbf, y se copia el «Coverage» del mensaje
+export const COBERTURA_Z16: Record<string, [number, number, number, number]> = {
+  prov_conce: [19377, 25405, 19532, 25635],
+  esteros: [19444, 25406, 19530, 25634],
+  rios: [19443, 25416, 19528, 25616],
+  quebradas: [19452, 25411, 19504, 25581],
+  poblacion_indigena_mz_2024: [19380, 25470, 19517, 25616],
+  poblacion_indigena_loc_2024: [19377, 25462, 19532, 25635]
+};
+
+const EXTENSION_MUNDO = getProjection('EPSG:3857')!.getExtent();
+
+// Extensión en EPSG:3857 de esas teselas, 1 m hacia adentro para no tocar las teselas vecinas
+export const extensionCobertura = ([xMin, yMin, xMax, yMax]: [number, number, number, number]): Extent => {
+  const lado = getWidth(EXTENSION_MUNDO) / 2 ** 16;
+  const [origenX, origenY] = getBottomLeft(EXTENSION_MUNDO);
+  return [origenX + xMin * lado + 1, origenY + yMin * lado + 1, origenX + (xMax + 1) * lado - 1, origenY + (yMax + 1) * lado - 1];
+};
+
+// Grilla XYZ estándar (origen y resoluciones del mundo) limitada a la cobertura de la capa. No basta con
+// la opción `extent` de la fuente: OpenLayers movería el origen de la grilla y cambiaría la numeración
+const grillaCapa = (layerName: string) => {
+  const cobertura = COBERTURA_Z16[layerName];
+  if (!cobertura) return undefined;
+  const tileSize = 512; // El mismo de VectorTileSource por omisión
+  return new TileGrid({
+    extent: extensionCobertura(cobertura),
+    origin: getTopLeft(EXTENSION_MUNDO),
+    resolutions: createXYZ({ maxZoom: GEOSERVER_MAX_ZOOM, tileSize }).getResolutions(),
+    tileSize
+  });
+};
+
 // Fuente de teselas vectoriales (MVT) de una capa del esquema griut
 const createGeoServerTileSource = (layerName: string) => {
   const format = new MVT();
+  const tileGrid = grillaCapa(layerName);
   if (!CAPAS_TESELAS_API.has(layerName)) {
-    return new VectorTileSource({ format, url: geoServerTileUrl(layerName), maxZoom: GEOSERVER_MAX_ZOOM });
+    return new VectorTileSource({ format, url: geoServerTileUrl(layerName), maxZoom: GEOSERVER_MAX_ZOOM, tileGrid });
   }
   return new VectorTileSource({
     format,
     url: `${API_URL}/api/teselas/${layerName}/{z}/{x}/{y}.pbf`, // XYZ: fila 0 arriba
     maxZoom: GEOSERVER_MAX_ZOOM,
+    tileGrid,
     tileLoadFunction: loadTileWithFallback(layerName, format)
   });
 };
