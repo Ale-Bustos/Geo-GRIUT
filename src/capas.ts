@@ -20,6 +20,7 @@ import type Tile from 'ol/Tile';
 import type VectorTile from 'ol/VectorTile';
 import TileState from 'ol/TileState';
 import TileGrid from 'ol/tilegrid/TileGrid';
+import type { TileCoord } from 'ol/tilecoord';
 import { createXYZ } from 'ol/tilegrid';
 import { get as getProjection } from 'ol/proj';
 import { getBottomLeft, getTopLeft, getWidth, type Extent } from 'ol/extent';
@@ -108,9 +109,11 @@ const GEOSERVER_MAX_ZOOM = 16;
 // Capas cuyas teselas ya sirve la API de GRIUT (backend en Go, ver backend/); las demás siguen en GeoServer
 const CAPAS_TESELAS_API = new Set(['rios']);
 
-// URL de una tesela en GeoWebCache. TMS numera las filas de abajo hacia arriba, de ahí {-y}
-const geoServerTileUrl = (layerName: string, xyz = '{z}/{x}/{-y}') =>
-  `${GEOSERVER_URL}/gwc/service/tms/1.0.0/griut:${layerName}@EPSG:900913@pbf/${xyz}.pbf`;
+// URL de una tesela en GeoWebCache a partir de la coordenada XYZ de OpenLayers (fila 0 arriba). TMS numera
+// las filas de abajo hacia arriba. No se usa la plantilla {-y}: OpenLayers la calcula con la extensión de la
+// grilla, y la de cada capa está limitada a su cobertura, así que daría filas equivocadas (negativas)
+export const geoServerTileUrl = (layerName: string, [z, x, y]: TileCoord) =>
+  `${GEOSERVER_URL}/gwc/service/tms/1.0.0/griut:${layerName}@EPSG:900913@pbf/${z}/${x}/${2 ** z - 1 - y}.pbf`;
 
 // Descarga una tesela de la API y, si la API no responde, la misma tesela de GeoServer
 const fetchOk = async (url: string) => {
@@ -122,9 +125,8 @@ const fetchOk = async (url: string) => {
 const loadTileWithFallback = (layerName: string, format: MVT) => (tile: Tile, url: string) => {
   const vectorTile = tile as VectorTile<RenderFeature>;
   vectorTile.setLoader((extent, _resolution, projection) => {
-    const [z, x, y] = vectorTile.getTileCoord();
     fetchOk(url)
-      .catch(() => fetchOk(geoServerTileUrl(layerName, `${z}/${x}/${2 ** z - 1 - y}`)))
+      .catch(() => fetchOk(geoServerTileUrl(layerName, vectorTile.getTileCoord())))
       .then((response) => response.arrayBuffer())
       .then((data) => vectorTile.setFeatures(format.readFeatures(data, { extent, featureProjection: projection })))
       .catch(() => vectorTile.setState(TileState.ERROR));
@@ -172,7 +174,12 @@ const createGeoServerTileSource = (layerName: string) => {
   const format = new MVT();
   const tileGrid = grillaCapa(layerName);
   if (!CAPAS_TESELAS_API.has(layerName)) {
-    return new VectorTileSource({ format, url: geoServerTileUrl(layerName), maxZoom: GEOSERVER_MAX_ZOOM, tileGrid });
+    return new VectorTileSource({
+      format,
+      tileUrlFunction: (tileCoord) => geoServerTileUrl(layerName, tileCoord),
+      maxZoom: GEOSERVER_MAX_ZOOM,
+      tileGrid
+    });
   }
   return new VectorTileSource({
     format,
