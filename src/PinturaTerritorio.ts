@@ -26,6 +26,7 @@ import { Style, Fill, Stroke, Text } from 'ol/style';
 import { getRenderPixel } from 'ol/render';
 import { fromLonLat } from 'ol/proj';
 import { unByKey } from 'ol/Observable';
+import ViewHint from 'ol/ViewHint';
 import { apply as applyTransform } from 'ol/transform';
 import type { EventsKey } from 'ol/events';
 import './css/pintura-territorio.css';
@@ -37,6 +38,15 @@ const INICIO_NOMBRE = 0.6; // Fracción del barrido desde la que empieza a apare
 // difuminada del mismo color
 const SOPORTA_FILTRO = typeof CanvasRenderingContext2D !== 'undefined' && 'filter' in CanvasRenderingContext2D.prototype;
 const FRENTE = 0.25; // Largo del frente difuminado, como fracción del recorrido
+
+/**
+ * Indica si el mapa se está moviendo en este cuadro (arrastre, zoom, giro o animación de la vista).
+ * Mientras se mueve, las pinturas se dibujan sin el borde suave: difuminar el lienzo en cada cuadro es
+ * lo que más cuesta de todo el mapa y a esa velocidad no se nota. Al
+ * detenerse el mapa se vuelve a dibujar con el borde suave
+ */
+export const enMovimiento = (viewHints: number[] | undefined) =>
+  Boolean(viewHints && (viewHints[ViewHint.ANIMATING] || viewHints[ViewHint.INTERACTING]));
 
 export interface DefinicionPintura {
   titulo: string; // Título de la capa de pintura (el que usa el selector de capas)
@@ -176,8 +186,12 @@ export class BarridoPinturas {
   private barridos: Barrido[] = [];
   private cuadro = 0;
   private enCurso = false;
+  // Al detenerse el mapa se dibuja un cuadro más, ya con el borde suave (ver enMovimiento)
+  private claveQuieto: EventsKey;
 
-  constructor(private map: Map, private duracion = DURACION_BARRIDO_MS) {}
+  constructor(private map: Map, private duracion = DURACION_BARRIDO_MS) {
+    this.claveQuieto = map.on('moveend', () => map.render());
+  }
 
   registrar(def: DefinicionPintura, pintura: VectorLayer, nombre: VectorLayer) {
     const origen = fromLonLat(def.desde);
@@ -239,6 +253,7 @@ export class BarridoPinturas {
     this.enCurso = false;
     this.barridos.forEach((b) => unByKey(b.claves));
     this.barridos = [];
+    unByKey(this.claveQuieto);
   }
 
   // Punto del recorrido a la distancia s del origen, desplazado n de costado; en píxeles del lienzo
@@ -259,7 +274,7 @@ export class BarridoPinturas {
     if (!ctx) return;
     ctx.save();
     const esPintura = e.target === b.pintura;
-    if (esPintura) {
+    if (esPintura && !enMovimiento(e.frameState?.viewHints)) {
       const px = b.difuminadoPx * e.frameState!.pixelRatio;
       if (SOPORTA_FILTRO) {
         ctx.filter = `blur(${px}px)`;
