@@ -10,7 +10,7 @@ API HTTP sobre el PostGIS de GRIUT (esquema `griut`). Corre en el TrueNAS, junto
 | `GET /api/buscar?q=…&limite=10` | Topónimos y puntos cuyo nombre contiene `q`, sin importar tildes ni mayúsculas (`q` de 2 a 100 caracteres, `limite` de 1 a 50) |
 | `GET /api/capas/{capa}/elementos/{id}` | Ficha de un punto como Feature GeoJSON. Capas: `toponimos`, `puntos-historicos`, `puntos-resignificacion`, `conflictos` |
 | `GET /api/lugares/{capa}/{id}/relacionados?radio=5000` | Lugares de las cuatro capas de puntos a menos de `radio` metros (1 a 20 000; por defecto 5 000) del punto, sin incluirlo: `[{capa, id, nombre, distancia_m}]`, del más cercano al más lejano y como mucho 5 por capa. Distancia sobre el elipsoide (`ST_DWithin` sobre `geography`). 404 si el punto no existe, 400 si el radio no es válido |
-| `GET /api/teselas/{capa}/{z}/{x}/{y}.pbf` | Tesela vectorial (MVT, esquema XYZ, zoom 0–16) armada en PostGIS con `ST_AsMVT`. Capas: `rios`, `esteros`, `quebradas`, `prov_conce`, `poblacion_indigena_mz_2024`, `poblacion_indigena_loc_2024`. Las últimas 64 MB de teselas quedan en memoria; responden con `ETag` y `Cache-Control` de un día |
+| `GET /api/teselas/{capa}/{z}/{x}/{y}.pbf` | Tesela vectorial (MVT, esquema XYZ, zoom 0–16) armada en PostGIS con `ST_AsMVT`. Capas: `rios`, `esteros`, `quebradas`, `prov_conce`, `poblacion_indigena_mz_2024`, `poblacion_indigena_loc_2024`. Las últimas 64 MB de teselas quedan en memoria; responden con `ETag` y `Cache-Control` de un día, comprimidas con gzip si el cliente lo acepta, y se pueden leer desde cualquier origen (`Access-Control-Allow-Origin: *`) |
 | `GET /api/poblacion/comunas` | Población indígena por comuna (Censo 2024, manzanas + localidades) y su comparación con 2017. Las zonas con dato reservado por el INE no suman personas indígenas: se informan en `personas_en_reservadas` y `zonas_reservadas` |
 
 ## Configuración
@@ -37,6 +37,17 @@ Cada push a `master` que toque `backend/` corre las pruebas y publica `ghcr.io/a
 
 ## Datos
 
-Las teselas salen directo de las tablas: si se recarga una capa, hay que reiniciar el servicio para vaciar su caché en memoria. El mapa pide a la API las capas de `CAPAS_TESELAS_API` (`src/capas.ts`). Si la API no responde, cada tesela se vuelve a pedir a GeoServer.
+Las teselas salen directo de las tablas: si se recarga una capa, hay que reiniciar el servicio para vaciar su caché en memoria. Si además Cloudflare guarda las teselas (ver más abajo), hay que purgar su caché. El mapa pide a la API las capas de `CAPAS_TESELAS_API` (`src/capas.ts`). Si la API no responde, cada tesela se vuelve a pedir a GeoServer.
 
 Los puntos (`griut.toponimos`, `griut.puntos_historicos`, `griut.puntos_resignificacion`, `griut.conflictos`) se cargaron desde `public/geojson/` con columnas `id`, `nombre`, `propiedades` (jsonb con las propiedades originales) y `geom` (Point 4326). El `id` de cada fila es el `id` del feature en el GeoJSON: el mapa lo usa para el enlace `?lugar=<capa>:<id>`, así que al recargar una capa hay que tomar ese `id` y no la posición del feature en el archivo. La búsqueda usa `griut.normalizar(text)` (`unaccent` + minúsculas) con un índice trigram. Si se cambia un GeoJSON en `public/geojson/`, hay que volver a cargarlo.
+
+## Caché de teselas en Cloudflare
+
+Por defecto Cloudflare no guarda los `.pbf` (`cf-cache-status: DYNAMIC`): cada tesela viaja por el túnel hasta el servidor. Para que las sirva desde su red hay que crear, en el panel de la zona `myc-ingenieria.cl`:
+
+1. **Caching → Cache Rules**: una regla con la expresión `(http.host eq "geo.myc-ingenieria.cl" and (starts_with(http.request.uri.path, "/api/teselas/") or starts_with(http.request.uri.path, "/geoserver/gwc/")))`, con *Cache eligibility: Eligible for cache* y *Edge TTL: Use cache-control header if present*. Así respeta el día que declara la API y la semana de GeoWebCache.
+2. **Rules → Compression Rules** (opcional): la misma expresión limitada a `/geoserver/gwc/`, con compresión gzip/brotli. GeoWebCache entrega las teselas sin comprimir; la API ya las comprime.
+
+Las teselas de la API no llevan `Vary: Origin` y admiten cualquier origen justamente para que una sola copia guardada sirva a producción y a los previews de Vercel. Para comprobarlo: pedir dos veces la misma tesela con `curl -sI` y ver `cf-cache-status: HIT` en la segunda.
+
+Después de recargar una tabla: reiniciar el servicio y purgar en Cloudflare (**Caching → Configuration → Purge**, por prefijo o todo).

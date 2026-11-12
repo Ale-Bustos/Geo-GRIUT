@@ -16,13 +16,16 @@ type cacheTeselas struct {
 }
 
 type teselaGuardada struct {
-	clave string
-	datos []byte
-	etag  string
+	clave    string
+	datos    []byte
+	etag     string
+	gzip     []byte // La misma tesela comprimida; nil si comprimida no pesa menos
+	etagGzip string
 }
 
-// Lo que ocupa una tesela: sus bytes más un costo fijo, para que las vacías también cuenten
-func (t *teselaGuardada) tamano() int { return len(t.datos) + 256 }
+// Lo que ocupa una tesela: sus bytes (y los de su copia comprimida) más un costo fijo, para que las
+// vacías también cuenten
+func (t *teselaGuardada) tamano() int { return len(t.datos) + len(t.gzip) + 256 }
 
 func nuevoCacheTeselas(maximo int) *cacheTeselas {
 	return &cacheTeselas{maximo: maximo, orden: list.New(), entrada: map[string]*list.Element{}}
