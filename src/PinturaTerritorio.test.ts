@@ -1,5 +1,7 @@
 import Map from 'ol/Map';
-import { BarridoPinturas, crearPintura, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
+import RenderEvent from 'ol/render/Event';
+import type { FrameState } from 'ol/Map';
+import { BarridoPinturas, crearPintura, enMovimiento, NAWELFUTA, FIOFIO_LEWFU, ANCA_LIGHEN } from './PinturaTerritorio';
 
 // Reloj de cuadros controlado a mano: cada llamada a avanzar(ms) ejecuta los cuadros pendientes
 let pendientes: FrameRequestCallback[] = [];
@@ -103,4 +105,29 @@ test('las tres pinturas comparten un solo ciclo y terminan juntas si empiezan ju
   avanzar(3000);
   pinturas.forEach((p) => expect(barridos.terminado(p.pintura)).toBe(true));
   expect(pendientes).toHaveLength(0);
+});
+
+test('enMovimiento: animación o interacción de la vista', () => {
+  expect(enMovimiento([0, 0])).toBe(false);
+  expect(enMovimiento([1, 0])).toBe(true);
+  expect(enMovimiento([0, 1])).toBe(true);
+  expect(enMovimiento(undefined)).toBe(false);
+});
+
+test('el borde suave solo se dibuja con el mapa quieto', () => {
+  const { cordillera } = montar();
+  // Lienzo de mentira: solo interesa qué filtro deja puesto el prerender
+  const prerender = (viewHints: number[]) => {
+    const ctx = { filter: 'none', shadowBlur: 0, shadowColor: '', save: () => {}, restore: () => {} };
+    const frameState = { pixelRatio: 2, viewHints } as unknown as FrameState;
+    cordillera.dispatchEvent(new RenderEvent('prerender', undefined, frameState, ctx as unknown as CanvasRenderingContext2D));
+    return ctx;
+  };
+  const quieto = prerender([0, 0]);
+  expect(quieto.filter !== 'none' || quieto.shadowBlur > 0).toBe(true);
+  for (const hints of [[1, 0], [0, 1]]) {
+    const moviendose = prerender(hints);
+    expect(moviendose.filter).toBe('none');
+    expect(moviendose.shadowBlur).toBe(0);
+  }
 });
