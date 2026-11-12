@@ -1,6 +1,8 @@
 package api
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,7 +23,8 @@ type almacenFalso struct {
 	limite    int
 	elementos map[int]*datos.Elemento
 	pánico    bool
-	teselas   int // Teselas pedidas a la base
+	teselas   int    // Teselas pedidas a la base
+	tesela    []byte // Lo que devuelve Tesela; por defecto, "<capa>-mvt"
 	// Relacionados: con qué se llamó y qué devuelve (nil y sin error = punto sin vecinos)
 	relCapa      string
 	relID        int
@@ -62,6 +65,9 @@ func (a *almacenFalso) Comunas(context.Context) ([]datos.Comuna, error) {
 
 func (a *almacenFalso) Tesela(_ context.Context, capa string, z, x, y int) ([]byte, error) {
 	a.teselas++
+	if a.tesela != nil {
+		return a.tesela, nil
+	}
 	return []byte(capa + "-mvt"), nil
 }
 
@@ -228,6 +234,72 @@ func TestTeselaCacheYEtag(t *testing.T) {
 	}
 	if rec = pedir(t, h, "GET", ruta, map[string]string{"If-None-Match": etag}); rec.Code != http.StatusNotModified || rec.Body.Len() != 0 {
 		t.Errorf("con el mismo ETag se esperaba 304 vacío y llegó %d", rec.Code)
+	}
+}
+
+func TestTeselaGzip(t *testing.T) {
+	original := bytes.Repeat([]byte("geometría repetida "), 200)
+	a := &almacenFalso{tesela: original}
+	h := servidorDePrueba(a)
+	ruta := "/api/teselas/rios/12/1216/2513.pbf"
+
+	rec := pedir(t, h, "GET", ruta, map[string]string{"Accept-Encoding": "br, gzip"})
+	if rec.Header().Get("Content-Encoding") != "gzip" || rec.Body.Len() >= len(original) {
+		t.Fatalf("se esperaba gzip más liviano: %q, %d bytes", rec.Header().Get("Content-Encoding"), rec.Body.Len())
+	}
+	if !strings.Contains(rec.Header().Get("Vary"), "Accept-Encoding") {
+		t.Errorf("falta Vary: Accept-Encoding: %v", rec.Header())
+	}
+	z, err := gzip.NewReader(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if descomprimida, _ := io.ReadAll(z); !bytes.Equal(descomprimida, original) {
+		t.Error("la tesela descomprimida no es la original")
+	}
+	etagGzip := rec.Header().Get("ETag")
+
+	// Sin Accept-Encoding (o con gzip;q=0) sale tal cual, con otro ETag
+	for _, acepta := range []string{"", "gzip;q=0", "br"} {
+		rec = pedir(t, h, "GET", ruta, map[string]string{"Accept-Encoding": acepta})
+		if rec.Header().Get("Content-Encoding") != "" || !bytes.Equal(rec.Body.Bytes(), original) {
+			t.Errorf("Accept-Encoding %q: se esperaba la tesela sin comprimir", acepta)
+		}
+		if rec.Header().Get("ETag") == etagGzip {
+			t.Errorf("Accept-Encoding %q: el ETag debe distinguir la forma comprimida", acepta)
+		}
+	}
+	if a.teselas != 1 {
+		t.Errorf("la tesela se pidió %d veces a la base", a.teselas)
+	}
+	// Una caché intermedia revalida con el ETag marcado como débil
+	rec = pedir(t, h, "GET", ruta, map[string]string{"Accept-Encoding": "gzip", "If-None-Match": "W/" + etagGzip})
+	if rec.Code != http.StatusNotModified {
+		t.Errorf("revalidación: estado %d", rec.Code)
+	}
+
+	// Una tesela chica no gana nada comprimida: sale tal cual
+	rec = pedir(t, servidorDePrueba(&almacenFalso{}), "GET", ruta, map[string]string{"Accept-Encoding": "gzip"})
+	if rec.Header().Get("Content-Encoding") != "" || rec.Body.String() != "rios-mvt" {
+		t.Errorf("tesela chica: %q %q", rec.Header().Get("Content-Encoding"), rec.Body)
+	}
+}
+
+func TestTeselaCORSAbierto(t *testing.T) {
+	h := servidorDePrueba(&almacenFalso{})
+	for _, origen := range []string{"https://geo-griut.vercel.app", "https://otro.sitio", ""} {
+		rec := pedir(t, h, "GET", "/api/teselas/rios/12/1216/2513.pbf", map[string]string{"Origin": origen})
+		if rec.Header().Get("Access-Control-Allow-Origin") != "*" {
+			t.Errorf("origen %q: las teselas se leen desde cualquier origen", origen)
+		}
+		if strings.Contains(strings.Join(rec.Header().Values("Vary"), ","), "Origin") {
+			t.Errorf("origen %q: la respuesta no debe variar por origen (caché compartida)", origen)
+		}
+	}
+	// El resto de la API sigue restringido
+	rec := pedir(t, h, "GET", "/api/salud", map[string]string{"Origin": "https://otro.sitio"})
+	if rec.Header().Get("Access-Control-Allow-Origin") != "" {
+		t.Error("la API fuera de las teselas no debe abrirse a cualquier origen")
 	}
 }
 
